@@ -17,12 +17,12 @@ This project has no build process or package.json. Development is straightforwar
 
 ### Current Implementation (Three.js)
 
-The game now uses Three.js for proper 3D rendering (`script.js`):
+The game now uses Three.js for proper 3D rendering with a well-organized codebase:
 
 1. **Core Structure**:
-   - `index.html`: Minimal HTML with canvas and Three.js CDN import
-   - `script.js`: Full Three.js implementation (894 lines)
-   - `style.css`: Basic styling for HTML elements
+   - `index.html`: Semantic HTML with proper accessibility attributes
+   - `script.js`: Modular Three.js implementation with comprehensive CONFIG object
+   - `style.css`: Well-organized CSS with responsive design
 
 2. **Game Systems**:
    - **Player System**: First-person camera with position, velocity, and jump mechanics
@@ -37,24 +37,45 @@ The game now uses Three.js for proper 3D rendering (`script.js`):
    - **Physics**: Basic gravity and ground collision
 
 3. **Three.js Architecture**:
-   - Scene graph with interactable objects group
-   - Perspective camera with FOV controls
-   - WebGL renderer with shadow mapping
+   - Scene graph with named objects and groups
+   - Perspective camera with configurable FOV
+   - WebGL renderer with shadow mapping and pixel ratio optimization
    - Raycaster for object interaction
    - Dynamic lighting (sun/moon directional lights)
+   - Proper resource disposal to prevent memory leaks
 
 ### Key Technical Implementation
 
-- **3D Rendering**: Full Three.js scene with proper depth, shadows, and lighting
-- **Object Creation**: Procedural generation with random variations
-- **Interaction System**: Raycasting for object highlighting and selection
-- **Performance**: Shadow mapping, fog for distance culling
-- **UI Elements**: Custom HTML overlays for crosshair, compass, and object selector
+- **Configuration**: Centralized CONFIG object for all game parameters
+- **Error Handling**: Try-catch blocks in critical functions
+- **Memory Management**: Proper disposal of Three.js objects
+- **Modular UI**: Separated UI creation functions
+- **Performance**: Shadow mapping, fog for distance culling, pixel ratio optimization
+- **Documentation**: JSDoc comments throughout the codebase
+
+## Code Organization
+
+The script.js file is organized into clear sections:
+1. Configuration (CONFIG object)
+2. Game State
+3. Initialization
+4. World Creation
+5. Object Creation
+6. Input Handling
+7. Helper Functions
+8. Camera Controls
+9. Game Logic
+10. Building System
+11. UI Elements
+12. Animation Loop
+13. Cleanup
 
 ## Important Notes for Future Development
 
+- All configurable values are in the CONFIG object - avoid magic numbers
 - The code is heavily commented for educational purposes
-- Three.js is loaded via CDN (version r128) - no local dependencies
+- Three.js is loaded via CDN (version r128) with integrity check
 - Maintain simplicity and avoid complex build tools
-- All game logic is contained in script.js for easy understanding
-- Consider performance implications when adding new features
+- Use the helper functions (disposeObject) for proper cleanup
+- Follow the established patterns for new features
+- Test on different screen sizes (responsive CSS included)

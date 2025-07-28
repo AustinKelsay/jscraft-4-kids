@@ -1,32 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My First Person JSCraft Game</title>
+  <meta name="description" content="JSCraft 3D - A first-person adventure game for kids learning JavaScript and Three.js">
+  <meta name="author" content="JSCraft Team">
+  
+  <title>JSCraft 3D - First Person Adventure Game</title>
+  
+  <!-- Styles -->
   <link rel="stylesheet" href="style.css">
-  <!-- Three.js library from CDN with crossorigin -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  
+  <!-- Three.js library from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" 
+          integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" 
+          crossorigin="anonymous"></script>
 </head>
 
 <body>
-  <!-- Game canvas -->
-  <canvas id="gameCanvas"></canvas>
-
-  <!-- Instructions overlay -->
-  <div id="instructions">
-    <strong>🎮 First Person Adventure</strong><br>
-    Click game to use mouse look<br>
-    WASD or arrows to move<br>
-    Q/E to turn left/right<br>
-    SPACE to remove, B to build<br>
-    1-3 to select object type<br>
-    ESC to release mouse
-  </div>
+  <!-- Main game container -->
+  <main id="gameContainer">
+    <!-- Game canvas (Three.js will render here) -->
+    <canvas id="gameCanvas" aria-label="3D game world"></canvas>
+    
+    <!-- Game UI overlay -->
+    <aside id="gameUI">
+      <!-- Instructions panel -->
+      <section id="instructions" role="complementary" aria-label="Game controls">
+        <h2>🎮 First Person Adventure</h2>
+        <ul>
+          <li>Click game to use mouse look</li>
+          <li><kbd>WASD</kbd> or <kbd>↑↓←→</kbd> to move</li>
+          <li><kbd>Q</kbd>/<kbd>E</kbd> to turn (no mouse)</li>
+          <li><kbd>SPACE</kbd> to jump/remove objects</li>
+          <li><kbd>B</kbd> to build</li>
+          <li><kbd>1</kbd>-<kbd>3</kbd> to select objects</li>
+          <li><kbd>ESC</kbd> to release mouse</li>
+        </ul>
+      </section>
+    </aside>
+  </main>
 
   <!-- Game script -->
-  <script src="script.js"></script>
+  <script src="script.js" defer></script>
 </body>
-
 </html>

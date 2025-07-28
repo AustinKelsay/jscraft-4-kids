@@ -7,13 +7,16 @@ Welcome to your first JavaScript first-person exploration game! This template gi
 ### Option 1: Using Replit
 1. Go to [Replit.com](https://replit.com)
 2. Create a new HTML/CSS/JS project
-3. Copy and paste the code from the HTML template into your `index.html` file
+3. Upload all three files: `index.html`, `script.js`, and `style.css`
 4. Click the "Run" button to see your game!
 
 ### Option 2: Using Your Computer
-1. Create a new file called `index.html`
-2. Copy and paste the template code into this file
-3. Double-click the file to open it in your web browser
+1. Download or copy all three files:
+   - `index.html` - The main HTML file
+   - `script.js` - The game logic
+   - `style.css` - The styling
+2. Save them in the same folder
+3. Double-click `index.html` to open it in your web browser
 
 ## 🎮 How to Play
 
@@ -30,8 +33,9 @@ Welcome to your first JavaScript first-person exploration game! This template gi
 - **ESC**: Release mouse control
 
 ### Building Controls
-- **SPACE**: Remove the object you're looking at (yellow highlight)
+- **SPACE**: Jump when moving, or remove the object you're looking at (yellow highlight)
 - **B**: Build a new object in front of you
+- **0**: Select fists (remove mode)
 - **1-3**: Select object type to build (tree, rock, house)
 
 ### UI Elements
@@ -44,38 +48,58 @@ Welcome to your first JavaScript first-person exploration game! This template gi
 
 This template teaches you important programming concepts:
 
-- **3D Perspective Rendering**: Creating the illusion of depth and distance
-- **First-Person Camera**: Moving through a world from the player's viewpoint
-- **Trigonometry**: Using math to calculate angles and positions
-- **Field of View**: Only showing objects that are visible in front of the player
-- **Distance-Based Scaling**: Making objects appear larger when close, smaller when far
-- **Object Sorting**: Drawing far objects first, near objects last for proper layering
-- **Event Listeners**: Making your program respond to keyboard and mouse input
-- **Game Loops**: Making things move and update continuously
-- **Canvas Drawing**: Creating graphics and animation
-- **Pointer Lock API**: Capturing mouse for first-person controls
-- **Object Building System**: Creating and destroying world objects
-- **Day/Night Cycles**: Dynamic lighting and celestial movement
+- **Three.js Fundamentals**: Working with a professional 3D graphics library
+- **3D Scene Graph**: Understanding how objects are organized in 3D space
+- **WebGL Rendering**: Hardware-accelerated graphics in the browser
+- **First-Person Camera**: PerspectiveCamera with yaw/pitch controls
+- **Vector Math**: Using THREE.Vector3 for positions and movement
+- **Raycasting**: Detecting what objects the player is looking at
+- **Event Listeners**: Keyboard and mouse input handling
+- **Game Loop**: Using requestAnimationFrame for smooth 60 FPS
+- **Pointer Lock API**: Capturing mouse for immersive controls
+- **Object Building System**: Dynamic object creation and removal
+- **Lighting Systems**: DirectionalLight for sun/moon, AmbientLight for atmosphere
+- **Memory Management**: Proper disposal of 3D objects to prevent leaks
 
 ## 🎨 Understanding the Code
 
-### The Player Object
+### Project Structure
+The game consists of three main files:
+- **index.html**: The webpage structure with semantic HTML5
+- **script.js**: All game logic using Three.js (1300+ lines)
+- **style.css**: Responsive styling with mobile support
+
+### Three.js Architecture
+This game uses Three.js, a powerful 3D graphics library that makes creating 3D worlds much easier:
+- **Scene**: The 3D world containing all objects
+- **Camera**: Your viewpoint in the world (PerspectiveCamera for realistic depth)
+- **Renderer**: Draws the 3D scene onto the HTML canvas
+- **Raycaster**: Detects which objects you're looking at for interaction
+
+### The Player System
 ```javascript
+// Player physics state
 const player = {
-    x: 400,        // Our position in the world (left-right)
-    y: 300,        // Our position in the world (forward-back)
-    angle: 0,      // Which direction we're facing (in radians)
-    pitch: 0,      // Looking up/down angle (in radians)
-    speed: 3,      // How fast we walk
-    turnSpeed: 0.05 // How fast we turn
+    velocity: new THREE.Vector3(),  // Movement speed in 3D space
+    canJump: true,                  // Whether player can jump
+    height: 1.7                     // Eye height in meters
+};
+
+// Camera controller for first-person view
+const cameraController = {
+    yaw: 0,      // Horizontal rotation (left/right looking)
+    pitch: 0     // Vertical rotation (up/down looking)
 };
 ```
 
 ### World Objects
-Objects in the world have positions, dimensions, and depth for realistic 3D appearance:
+Objects are created using Three.js geometries and materials:
 ```javascript
-// A tree with position, size, depth, and color variations
-{x: 200, y: 100, width: 40, height: 120, depth: 40, color: '#228B22', type: 'tree'}
+// Example: Creating a tree with Three.js
+const tree = new THREE.Group();  // Container for multiple parts
+// Trunk: CylinderGeometry with brown material
+// Foliage: Multiple ConeGeometry layers with green material
+tree.userData = { type: 'tree', removable: true };
 ```
 
 Objects feature:
@@ -83,20 +107,29 @@ Objects feature:
 - **Dynamic shading** based on distance and time of day
 - **Detailed textures** like bark, foliage clusters, rock facets, and house features
 
-### 3D Perspective Magic
-The key to 3D perspective is calculating how objects should appear based on:
-- **Distance**: Closer objects appear larger
-- **Angle**: Objects only visible within your field of view  
-- **Screen Position**: Where objects appear left/right based on viewing angle
-- **Pitch**: Objects move up/down based on your vertical look angle
-- **Lighting**: Objects brighten/darken based on time of day
+### 3D Graphics with Three.js
+Three.js handles the complex 3D math for us:
+- **Perspective Projection**: Automatic realistic depth rendering
+- **Shadow Mapping**: Dynamic shadows that follow the sun/moon
+- **Fog Effects**: Distance-based visibility for performance
+- **Lighting System**: DirectionalLight for sun/moon, AmbientLight for base illumination
+- **Materials**: PBR (Physically Based Rendering) with MeshStandardMaterial
 
 ### The Game Loop
-The game loop runs about 60 times per second and does these main things:
-1. **Update** the player position and rotation based on key presses
-2. **Draw** the background (sky gradient and ground gradient)
-3. **Draw** all visible world objects with 3D perspective and distance sorting
-4. **Draw** UI elements (crosshair and compass)
+The game runs at 60 FPS using requestAnimationFrame:
+```javascript
+function animate() {
+    requestAnimationFrame(animate);
+    
+    const delta = clock.getDelta();  // Time since last frame
+    
+    updatePlayer(delta);             // Handle movement and physics
+    updateDayNightCycle();           // Move sun/moon, change lighting
+    updateObjectHighlight();         // Check what player is looking at
+    
+    renderer.render(scene, camera);  // Draw everything
+}
+```
 
 ### Key Features
 - **Mouse Look**: Click to capture mouse for smooth camera control
@@ -104,7 +137,7 @@ The game loop runs about 60 times per second and does these main things:
 - **Day/Night Cycle**: 2-minute days and 1-minute nights with moving sun/moon
 - **Dynamic Lighting**: Objects and sky change based on celestial positions
 - **Object Targeting**: Yellow highlight shows which object you can interact with
-- **Realistic Objects**: Trees with foliage clusters, faceted rocks, detailed houses
+- **Realistic Objects**: Trees with multiple foliage layers, procedurally deformed rocks, detailed houses with windows and doors
 
 ## 🎯 Fun Challenges to Try
 
@@ -133,49 +166,90 @@ The game loop runs about 60 times per second and does these main things:
 
 ## 🔧 Customization Ideas
 
-### Easy Changes
-- **Sky Colors**: Change the gradient colors in `drawBackground()` for different times of day
-- **Object Colors**: Modify tree (`#228B22`), rock (`#696969`), or house (`#D2691E`) colors
-- **World Bounds**: Adjust the player boundary limits to make the explorable area bigger
-- **Movement Speed**: Change `speed: 3` to make walking faster or slower
-- **Turn Speed**: Change `turnSpeed: 0.05` to make looking around faster or slower
-- **Add More Objects**: Copy existing objects in the `worldObjects` array and change their positions
+### Easy Changes - Modify the CONFIG Object
+All game settings are in the CONFIG object at the top of `script.js`:
+```javascript
+const CONFIG = {
+    player: {
+        speed: 10,          // Make walking faster/slower
+        lookSpeed: 0.002,   // Mouse sensitivity
+        jumpSpeed: 10       // Jump height
+    },
+    world: {
+        size: 1000,         // Playable area size
+        fogFar: 500         // View distance
+    },
+    objects: {
+        tree: {
+            leavesColor: 0x228B22,  // Change tree color (hex format)
+            minHeight: 4,           // Tree size variation
+            maxHeight: 8
+        }
+    }
+}
+```
 
-### Color Codes You Can Use
-- `#FF0000` - Red
-- `#00FF00` - Green  
-- `#0000FF` - Blue
-- `#FFFF00` - Yellow
-- `#FF00FF` - Magenta
-- `#00FFFF` - Cyan
-- `#FFA500` - Orange
-- `#800080` - Purple
+### Adding More Objects
+Find the `createInitialObjects()` function in script.js and add more objects:
+```javascript
+// Add a new tree at position (x: 50, z: 50)
+createTree(50, 50);
+
+// Add multiple rocks in a pattern
+for (let i = 0; i < 5; i++) {
+    createRock(i * 10, 20);
+}
+
+// Create a house
+createHouse(100, 100);
+```
+
+Objects are automatically added to the world with:
+- Shadows enabled
+- Collision detection ready (for future implementation)
+- Removable by looking at them and pressing SPACE
+
+### Color Codes for Three.js
+Three.js uses hexadecimal color format (0x instead of #):
+- `0xFF0000` - Red
+- `0x00FF00` - Green  
+- `0x0000FF` - Blue
+- `0xFFFF00` - Yellow
+- `0xFF00FF` - Magenta
+- `0x00FFFF` - Cyan
+- `0xFFA500` - Orange
+- `0x800080` - Purple
 
 ## 🐛 Common Problems and Solutions
 
 ### My player doesn't move!
 - Check that you copied all the JavaScript code
-- Make sure the canvas has focus (click on it first)
-- Verify that both WASD and arrow key event listeners are included
+- Make sure to click on the game canvas to activate it
+- The browser console (F12) will show any JavaScript errors
 
 ### The movement feels too fast/slow!
-- Change the `speed` value in the player object (try values between 1-10)
-- Change the `turnSpeed` value for faster/slower looking around
+- Adjust `CONFIG.player.speed` (default is 10, try 5-20)
+- Change `CONFIG.player.lookSpeed` for mouse sensitivity (default 0.002)
 
 ### I can't see any objects!
-- Objects might be behind you - try turning around with Q/E keys
-- Check that object colors aren't the same as the background
-- Objects have a maximum render distance - try moving closer
+- Objects might be behind you - try turning around
+- Check if fog is hiding distant objects - increase `CONFIG.world.fogFar`
+- Make sure Three.js loaded properly (check console for errors)
 
-### The 3D effect doesn't look right!
-- Make sure the `fieldOfView` calculation is working correctly
-- Check that objects are being sorted by distance (far to near)
-- Verify the perspective scaling math in `drawWorldObjects()`
+### The game is running slowly!
+- Reduce shadow quality: `CONFIG.renderer.shadowMapSize = 1024`
+- Decrease the number of objects in the world
+- Close other browser tabs to free up memory
+
+### Objects look dark or black!
+- Make sure lighting is set up properly in `createLighting()`
+- Check that materials have proper color values (0x format)
+- Verify shadows are enabled on both lights and objects
 
 ### The game doesn't start!
 - Check the browser's developer console for errors (F12 key)
-- Make sure all brackets `{}` and parentheses `()` match up
-- Ensure all semicolons `;` are in place
+- Make sure Three.js CDN link in index.html is working
+- Verify you're using a modern browser with WebGL support
 
 ## 📚 Learning Resources
 
@@ -187,13 +261,29 @@ The game loop runs about 60 times per second and does these main things:
 - Learn about 3D math and vector calculations for advanced effects
 
 ### Helpful Websites
-- [MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API) - Canvas tutorials
+- [Three.js Documentation](https://threejs.org/docs/) - Official Three.js docs
+- [Three.js Examples](https://threejs.org/examples/) - Interactive demos
+- [MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API) - WebGL tutorials
 - [W3Schools JavaScript](https://www.w3schools.com/js/) - JavaScript basics
 - [Khan Academy](https://www.khanacademy.org/computing/computer-programming) - Programming courses
 
 ## 🎉 You Did It!
 
-Congratulations! You now have a working first-person 3D exploration game that you built yourself. You can walk around a world, see objects with realistic perspective, and navigate using first-person controls just like in professional games. This is an excellent foundation for learning game development! Keep experimenting, keep learning, and most importantly, keep having fun!
+Congratulations! You now have a working first-person 3D exploration game built with Three.js. You can:
+- Walk around a 3D world with realistic physics
+- Look around smoothly with mouse controls
+- Build and remove objects dynamically
+- Experience day/night cycles with moving sun and moon
+- See realistic shadows and lighting effects
+
+This is professional-level game development using the same tools that power many web games! 
+
+### What Makes This Special
+- You're using **Three.js**, the same library used by major companies
+- The code is organized and scalable for adding new features
+- Everything is configurable through the CONFIG object
+- Proper memory management prevents crashes
+- Responsive design works on different screen sizes
 
 Remember: Every expert was once a beginner. You're already on your way to becoming a great programmer! 🌟
 
