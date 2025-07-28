@@ -438,8 +438,32 @@
     function buildBlock() {
       const targetBlock = getTargetBlock();
       if (targetBlock) {
-        // Place block above the target block
-        setBlock(targetBlock.gridPos.x, targetBlock.gridPos.y, targetBlock.gridPos.z + 1, player.selectedBlock);
+        // Try to place block in front of the targeted block (towards player)
+        const dx = player.x - (targetBlock.gridPos.x * BLOCK_SIZE);
+        const dy = player.y - (targetBlock.gridPos.y * BLOCK_SIZE);
+        
+        let newX = targetBlock.gridPos.x;
+        let newY = targetBlock.gridPos.y;
+        let newZ = targetBlock.gridPos.z;
+        
+        // Determine which face of the block to place on
+        if (Math.abs(dx) > Math.abs(dy)) {
+          newX += dx > 0 ? 1 : -1;
+        } else {
+          newY += dy > 0 ? 1 : -1;
+        }
+        
+        // If that spot is occupied, try placing above
+        if (getBlock(newX, newY, newZ) !== 'air') {
+          newX = targetBlock.gridPos.x;
+          newY = targetBlock.gridPos.y;
+          newZ = targetBlock.gridPos.z + 1;
+        }
+        
+        // Only place if the spot is empty
+        if (getBlock(newX, newY, newZ) === 'air') {
+          setBlock(newX, newY, newZ, player.selectedBlock);
+        }
       }
     }
 
@@ -451,29 +475,29 @@
       }
     }
     function getTargetBlock() {
-      if (!window.clickableBlocks) return null;
-
-      // Find the closest block to the center of the screen
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
-      let closestBlock = null;
-      let closestDistance = Infinity;
-
-      window.clickableBlocks.forEach(block => {
-        const blockCenterX = block.screenX + block.screenWidth / 2;
-        const blockCenterY = block.screenY + block.screenHeight / 2;
-        const distance = Math.sqrt(
-          Math.pow(blockCenterX - centerX, 2) +
-          Math.pow(blockCenterY - centerY, 2)
-        );
-
-        if (distance < closestDistance && distance < 100) {
-          closestDistance = distance;
-          closestBlock = block;
+      // Cast a ray from player position in the direction they're looking
+      const rayLength = 5; // How far to look for blocks
+      const steps = rayLength * 2; // Number of steps along the ray
+      
+      for (let i = 1; i <= steps; i++) {
+        const distance = (i / steps) * rayLength * BLOCK_SIZE;
+        const checkX = player.x + Math.cos(player.angle) * distance;
+        const checkY = player.y + Math.sin(player.angle) * distance;
+        const checkZ = player.z;
+        
+        const gridPos = getGridPos(checkX, checkY, checkZ);
+        const blockType = getBlock(gridPos.x, gridPos.y, gridPos.z);
+        
+        if (blockType !== 'air') {
+          return {
+            gridPos: gridPos,
+            blockType: blockType,
+            distance: distance
+          };
         }
-      });
-
-      return closestBlock;
+      }
+      
+      return null;
     }
 
     // Main game loop
