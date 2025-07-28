@@ -34,8 +34,8 @@
       /* Position over the game */
       top: 10px;
       /* Distance from top */
-      left: 10px;
-      /* Distance from left */
+      right: 10px;
+      /* Distance from right */
       color: #FFD700;
       /* Gold text */
       font-size: 14px;
@@ -60,9 +60,12 @@
 
   <div id="instructions">
     <strong>🎮 First Person Adventure</strong><br>
+    Click game to use mouse look<br>
     WASD or arrows to move<br>
     Q/E to turn left/right<br>
-    Press F11 for true fullscreen!
+    SPACE to remove, B to build<br>
+    1-3 to select object type<br>
+    ESC to release mouse
   </div>
 
   <script>
@@ -87,6 +90,7 @@
       x: 400,        // Our position in the world (left-right)
       y: 300,        // Our position in the world (forward-back)
       angle: 0,      // Which direction we're facing (in radians)
+      pitch: 0,      // Looking up/down angle (in radians, -PI/4 to PI/4)
       speed: 3,      // How fast we walk
       turnSpeed: 0.05 // How fast we turn
     };
@@ -101,42 +105,207 @@
       turnRight: false  // Turn right
     };
 
+    // Object building system
+    const buildableTypes = ['tree', 'rock', 'house'];
+    let selectedObjectType = 0; // Index in buildableTypes array
+    let targetedObject = null; // The object we're looking at
+    let mouseControlsActive = false; // Track if mouse controls are active
+    
+    // Day/night cycle system
+    const dayDuration = 120000; // 2 minutes in milliseconds
+    const nightDuration = 60000; // 1 minute in milliseconds
+    const cycleDuration = dayDuration + nightDuration;
+    let cycleStartTime = Date.now();
+    
+    function getDayNightState() {
+      const elapsed = (Date.now() - cycleStartTime) % cycleDuration;
+      if (elapsed < dayDuration) {
+        // Day time - return progress from 0 to 1 during the day
+        const dayProgress = elapsed / dayDuration;
+        // Brightness follows sun height - dimmer at sunrise/sunset
+        const sunHeight = Math.sin(dayProgress * Math.PI);
+        const brightness = 0.6 + sunHeight * 0.4; // Range from 0.6 to 1.0
+        
+        return {
+          isDay: true,
+          progress: dayProgress,
+          brightness: brightness,
+          sunHeight: sunHeight
+        };
+      } else {
+        // Night time
+        const nightProgress = (elapsed - dayDuration) / nightDuration;
+        const moonHeight = Math.sin(nightProgress * Math.PI);
+        const brightness = 0.2 + moonHeight * 0.15; // Range from 0.2 to 0.35
+        
+        return {
+          isDay: false,
+          progress: nightProgress,
+          brightness: brightness,
+          moonHeight: moonHeight
+        };
+      }
+    }
+
     // Create objects in our 3D world - these have positions and will be drawn with perspective
     const worldObjects = [
-      // Trees - tall objects that look like trees from first person
-      {x: 200, y: 100, width: 40, height: 120, color: '#228B22', type: 'tree'},
-      {x: 500, y: 200, width: 40, height: 120, color: '#228B22', type: 'tree'},
-      {x: 150, y: 400, width: 40, height: 120, color: '#0F5F0F', type: 'tree'},
-      {x: 600, y: 350, width: 40, height: 120, color: '#228B22', type: 'tree'},
-      {x: 300, y: 500, width: 40, height: 120, color: '#0F5F0F', type: 'tree'},
-      {x: 700, y: 150, width: 40, height: 120, color: '#228B22', type: 'tree'},
+      // Trees - various types and sizes (now with depth property)
+      {x: 200, y: 100, width: 40, height: 120, depth: 40, color: '#228B22', type: 'tree'},
+      {x: 500, y: 200, width: 45, height: 140, depth: 45, color: '#0F5F0F', type: 'tree'},
+      {x: 150, y: 400, width: 35, height: 100, depth: 35, color: '#2E8B57', type: 'tree'},
+      {x: 600, y: 350, width: 50, height: 160, depth: 50, color: '#228B22', type: 'tree'},
+      {x: 300, y: 500, width: 40, height: 110, depth: 40, color: '#006400', type: 'tree'},
+      {x: 700, y: 150, width: 38, height: 125, depth: 38, color: '#228B22', type: 'tree'},
+      {x: 450, y: 450, width: 42, height: 130, depth: 42, color: '#0F5F0F', type: 'tree'},
+      {x: 250, y: 350, width: 36, height: 115, depth: 36, color: '#2E8B57', type: 'tree'},
+      {x: 800, y: 400, width: 48, height: 150, depth: 48, color: '#006400', type: 'tree'},
+      {x: 50, y: 550, width: 40, height: 120, depth: 40, color: '#228B22', type: 'tree'},
 
-      // Rocks - smaller ground objects
-      {x: 350, y: 250, width: 30, height: 25, color: '#696969', type: 'rock'},
-      {x: 180, y: 300, width: 25, height: 20, color: '#808080', type: 'rock'},
-      {x: 550, y: 400, width: 35, height: 30, color: '#696969', type: 'rock'},
-      {x: 250, y: 200, width: 28, height: 22, color: '#808080', type: 'rock'},
+      // Rocks - various sizes and shades
+      {x: 350, y: 250, width: 30, height: 25, depth: 30, color: '#696969', type: 'rock'},
+      {x: 180, y: 300, width: 25, height: 20, depth: 25, color: '#808080', type: 'rock'},
+      {x: 550, y: 400, width: 35, height: 30, depth: 35, color: '#696969', type: 'rock'},
+      {x: 250, y: 200, width: 28, height: 22, depth: 28, color: '#A9A9A9', type: 'rock'},
+      {x: 750, y: 250, width: 32, height: 28, depth: 32, color: '#708090', type: 'rock'},
+      {x: 400, y: 150, width: 22, height: 18, depth: 22, color: '#696969', type: 'rock'},
+      {x: 650, y: 480, width: 40, height: 35, depth: 40, color: '#808080', type: 'rock'},
+      {x: 120, y: 450, width: 26, height: 21, depth: 26, color: '#A9A9A9', type: 'rock'},
 
-      // Houses - rectangular buildings
-      {x: 100, y: 200, width: 80, height: 100, color: '#D2691E', type: 'house'},
-      {x: 650, y: 300, width: 80, height: 100, color: '#CD853F', type: 'house'}
+      // Houses - different styles and colors
+      {x: 100, y: 200, width: 80, height: 100, depth: 60, color: '#D2691E', type: 'house'},
+      {x: 650, y: 300, width: 90, height: 110, depth: 70, color: '#CD853F', type: 'house'},
+      {x: 400, y: 600, width: 75, height: 95, depth: 55, color: '#8B4513', type: 'house'},
+      {x: 850, y: 500, width: 85, height: 105, depth: 65, color: '#A0522D', type: 'house'},
+      {x: 300, y: 50, width: 70, height: 90, depth: 50, color: '#D2691E', type: 'house'}
     ];
 
     // This function draws the sky and ground
     function drawBackground() {
-      // Draw sky (top half of screen)
-      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height / 2);
-      gradient.addColorStop(0, '#87CEEB'); // Light blue at top
-      gradient.addColorStop(1, '#E0F6FF'); // Lighter blue at horizon
+      const dayNight = getDayNightState();
+      
+      // Sky colors change based on time
+      let skyTopColor, skyBottomColor, groundTopColor, groundBottomColor;
+      
+      if (dayNight.isDay) {
+        // Day colors - change based on sun position
+        if (dayNight.sunHeight < 0.3) {
+          // Sunrise/sunset colors
+          const sunsetIntensity = 1 - (dayNight.sunHeight / 0.3);
+          skyTopColor = `rgb(${Math.floor(135 + 120 * sunsetIntensity)}, ${Math.floor(206 - 100 * sunsetIntensity)}, ${Math.floor(235 - 135 * sunsetIntensity)})`;
+          skyBottomColor = `rgb(${Math.floor(224 + 31 * sunsetIntensity)}, ${Math.floor(246 - 70 * sunsetIntensity)}, ${Math.floor(255 - 155 * sunsetIntensity)})`;
+        } else {
+          // Full day colors
+          skyTopColor = '#87CEEB';
+          skyBottomColor = '#E0F6FF';
+        }
+        groundTopColor = '#90EE90';
+        groundBottomColor = '#228B22';
+      } else {
+        // Night colors
+        const nightIntensity = 1 - dayNight.brightness;
+        skyTopColor = `rgb(${Math.floor(25 * dayNight.brightness)}, ${Math.floor(25 * dayNight.brightness)}, ${Math.floor(60 * dayNight.brightness)})`;
+        skyBottomColor = `rgb(${Math.floor(40 * dayNight.brightness)}, ${Math.floor(40 * dayNight.brightness)}, ${Math.floor(80 * dayNight.brightness)})`;
+        groundTopColor = `rgb(${Math.floor(50 * dayNight.brightness)}, ${Math.floor(80 * dayNight.brightness)}, ${Math.floor(50 * dayNight.brightness)})`;
+        groundBottomColor = `rgb(${Math.floor(20 * dayNight.brightness)}, ${Math.floor(50 * dayNight.brightness)}, ${Math.floor(20 * dayNight.brightness)})`;
+      }
+      
+      // Draw sky (adjusted by pitch)
+      const pitchOffset = player.pitch * 300;
+      const horizonY = canvas.height / 2 + pitchOffset;
+      
+      const gradient = ctx.createLinearGradient(0, 0, 0, horizonY);
+      gradient.addColorStop(0, skyTopColor);
+      gradient.addColorStop(1, skyBottomColor);
       ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
+      ctx.fillRect(0, 0, canvas.width, horizonY);
+      
+      // Draw stars at night
+      if (!dayNight.isDay) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.8 * (1 - dayNight.brightness)})`;
+        for (let i = 0; i < 100; i++) {
+          const x = (i * 73) % canvas.width;
+          const y = ((i * 37) % horizonY) + pitchOffset;
+          const size = ((i * 13) % 3) + 1;
+          if (y > 0 && y < horizonY) {
+            ctx.beginPath();
+            ctx.arc(x, y, size / 2, 0, 2 * Math.PI);
+            ctx.fill();
+          }
+        }
+      }
 
-      // Draw ground (bottom half of screen) 
-      const groundGradient = ctx.createLinearGradient(0, canvas.height / 2, 0, canvas.height);
-      groundGradient.addColorStop(0, '#90EE90'); // Light green at horizon
-      groundGradient.addColorStop(1, '#228B22'); // Darker green at bottom
+      // Draw ground (bottom part of screen adjusted by pitch) 
+      const groundGradient = ctx.createLinearGradient(0, horizonY, 0, canvas.height);
+      groundGradient.addColorStop(0, groundTopColor);
+      groundGradient.addColorStop(1, groundBottomColor);
       ctx.fillStyle = groundGradient;
-      ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
+      ctx.fillRect(0, horizonY, canvas.width, canvas.height - horizonY);
+      
+      // Draw sun or moon
+      const celestialX = canvas.width / 2;
+      let celestialY;
+      
+      if (dayNight.isDay) {
+        // Sun position - moves in an arc across the sky
+        const sunAngle = dayNight.progress * Math.PI; // 0 to PI during the day
+        celestialY = horizonY - Math.sin(sunAngle) * (horizonY - 100) + pitchOffset;
+        
+        // Draw sun
+        const sunRadius = 30;
+        // Sun glow
+        const glowGradient = ctx.createRadialGradient(celestialX, celestialY, 0, celestialX, celestialY, sunRadius * 2);
+        glowGradient.addColorStop(0, 'rgba(255, 255, 100, 0.4)');
+        glowGradient.addColorStop(1, 'rgba(255, 255, 100, 0)');
+        ctx.fillStyle = glowGradient;
+        ctx.fillRect(celestialX - sunRadius * 2, celestialY - sunRadius * 2, sunRadius * 4, sunRadius * 4);
+        
+        // Sun body
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.arc(celestialX, celestialY, sunRadius, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Sun rays
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(celestialX + Math.cos(angle) * (sunRadius + 5), celestialY + Math.sin(angle) * (sunRadius + 5));
+          ctx.lineTo(celestialX + Math.cos(angle) * (sunRadius + 15), celestialY + Math.sin(angle) * (sunRadius + 15));
+          ctx.stroke();
+        }
+      } else {
+        // Moon position - also moves in an arc
+        const moonAngle = dayNight.progress * Math.PI;
+        celestialY = horizonY - Math.sin(moonAngle) * (horizonY - 100) + pitchOffset;
+        
+        // Draw moon
+        const moonRadius = 25;
+        // Moon glow
+        ctx.fillStyle = 'rgba(200, 200, 255, 0.3)';
+        ctx.beginPath();
+        ctx.arc(celestialX, celestialY, moonRadius * 1.5, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Moon body
+        ctx.fillStyle = '#F0F0F0';
+        ctx.beginPath();
+        ctx.arc(celestialX, celestialY, moonRadius, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Moon craters
+        ctx.fillStyle = '#D0D0D0';
+        ctx.beginPath();
+        ctx.arc(celestialX - 8, celestialY - 5, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(celestialX + 6, celestialY + 3, 3, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(celestialX - 3, celestialY + 8, 2, 0, 2 * Math.PI);
+        ctx.fill();
+      }
     }
 
     // This function calculates distance between two points
@@ -155,6 +324,10 @@
 
     // This function draws objects with 3D perspective
     function drawWorldObjects() {
+      // Reset targeted object each frame
+      targetedObject = null;
+      let closestDistance = Infinity;
+      
       // Sort objects by distance (far objects drawn first, near objects drawn last)
       const sortedObjects = worldObjects.slice().sort((a, b) => {
         const distA = getDistance(player.x, player.y, a.x, a.y);
@@ -183,6 +356,12 @@
         const fieldOfView = Math.PI / 3; // 60 degrees field of view
         if (Math.abs(relativeAngle) > fieldOfView) return;
 
+        // Check if this object is near the center of our view (for targeting)
+        if (Math.abs(relativeAngle) < 0.1 && distance < closestDistance && distance < 200) {
+          targetedObject = obj;
+          closestDistance = distance;
+        }
+
         // Calculate screen position based on angle (using current screen width)
         const screenCenterX = canvas.width / 2;
         const screenX = screenCenterX + (relativeAngle / fieldOfView) * (canvas.width / 2);
@@ -193,14 +372,17 @@
         const screenWidth = obj.width * scale;
         const screenHeight = obj.height * scale;
 
-        // Calculate vertical position (objects sit on the ground)
-        const horizon = canvas.height / 2;
+        // Calculate vertical position (objects sit on the ground) - adjusted by pitch
+        const basePitch = player.pitch * 300; // Convert pitch to pixel offset
+        const horizon = canvas.height / 2 + basePitch;
         const screenY = horizon - screenHeight;
 
         // Only draw if object is visible on screen
         if (screenX + screenWidth > 0 && screenX < canvas.width && screenY < canvas.height) {
-          // Set object color (make distant objects slightly darker)
-          const brightness = Math.max(0.3, 1 - distance / 400);
+          // Set object color (make distant objects slightly darker + apply day/night)
+          const dayNight = getDayNightState();
+          const distanceBrightness = Math.max(0.3, 1 - distance / 400);
+          const brightness = distanceBrightness * dayNight.brightness;
           const color = obj.color;
 
           // Parse hex color and apply brightness
@@ -211,33 +393,355 @@
           const adjustedColor = `rgb(${Math.floor(r * brightness)}, ${Math.floor(g * brightness)}, ${Math.floor(b * brightness)})`;
           ctx.fillStyle = adjustedColor;
 
-          // Draw the object
-          ctx.fillRect(screenX, screenY, screenWidth, screenHeight);
-
-          // Add details based on object type
-          if (obj.type === 'tree' && screenWidth > 10) {
-            // Add tree trunk (brown base)
-            ctx.fillStyle = `rgb(${Math.floor(139 * brightness)}, ${Math.floor(69 * brightness)}, ${Math.floor(19 * brightness)})`;
-            const trunkWidth = screenWidth * 0.3;
-            const trunkHeight = screenHeight * 0.3;
-            ctx.fillRect(screenX + screenWidth / 2 - trunkWidth / 2, screenY + screenHeight - trunkHeight, trunkWidth, trunkHeight);
-          } else if (obj.type === 'house' && screenWidth > 15) {
-            // Add house roof (triangular top)
-            ctx.fillStyle = `rgb(${Math.floor(160 * brightness)}, ${Math.floor(82 * brightness)}, ${Math.floor(45 * brightness)})`;
+          // Draw objects as simple 3D cubes/shapes
+          const depthScale = Math.min(0.3, scale * 0.3);
+          const objDepth = obj.depth ? obj.depth * depthScale : screenWidth * 0.3;
+          
+          if (obj.type === 'tree') {
+            // Draw more realistic tree
+            const trunkWidth = screenWidth * 0.15;
+            const trunkHeight = screenHeight * 0.45;
+            const foliageRadius = screenWidth * 0.35;
+            
+            // Trunk with taper and texture
+            const trunkX = screenX + screenWidth / 2 - trunkWidth / 2;
+            const trunkY = screenY + screenHeight - trunkHeight;
+            
+            // Trunk side (3D effect)
+            ctx.fillStyle = `rgb(${Math.floor(80 * brightness)}, ${Math.floor(40 * brightness)}, ${Math.floor(10 * brightness)})`;
             ctx.beginPath();
-            ctx.moveTo(screenX, screenY);
-            ctx.lineTo(screenX + screenWidth / 2, screenY - screenHeight * 0.3);
-            ctx.lineTo(screenX + screenWidth, screenY);
+            ctx.moveTo(trunkX + trunkWidth, trunkY);
+            ctx.lineTo(trunkX + trunkWidth + objDepth * 0.15, trunkY - objDepth * 0.15);
+            ctx.lineTo(trunkX + trunkWidth * 0.9 + objDepth * 0.15, trunkY + trunkHeight - objDepth * 0.15);
+            ctx.lineTo(trunkX + trunkWidth * 0.8, trunkY + trunkHeight);
             ctx.closePath();
             ctx.fill();
-
-            // Add door
-            if (screenWidth > 25) {
-              ctx.fillStyle = `rgb(${Math.floor(101 * brightness)}, ${Math.floor(67 * brightness)}, ${Math.floor(33 * brightness)})`;
-              const doorWidth = screenWidth * 0.25;
-              const doorHeight = screenHeight * 0.6;
-              ctx.fillRect(screenX + screenWidth / 2 - doorWidth / 2, screenY + screenHeight - doorHeight, doorWidth, doorHeight);
+            
+            // Trunk front with taper
+            ctx.fillStyle = `rgb(${Math.floor(101 * brightness)}, ${Math.floor(67 * brightness)}, ${Math.floor(33 * brightness)})`;
+            ctx.beginPath();
+            ctx.moveTo(trunkX - trunkWidth * 0.1, trunkY + trunkHeight);
+            ctx.lineTo(trunkX + trunkWidth * 0.1, trunkY);
+            ctx.lineTo(trunkX + trunkWidth * 0.9, trunkY);
+            ctx.lineTo(trunkX + trunkWidth * 1.1, trunkY + trunkHeight);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Add trunk texture lines
+            if (screenWidth > 30) {
+              ctx.strokeStyle = `rgb(${Math.floor(60 * brightness)}, ${Math.floor(30 * brightness)}, ${Math.floor(10 * brightness)})`;
+              ctx.lineWidth = 1;
+              for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.moveTo(trunkX + trunkWidth * (0.3 + i * 0.2), trunkY + trunkHeight * 0.2);
+                ctx.lineTo(trunkX + trunkWidth * (0.3 + i * 0.2), trunkY + trunkHeight * 0.9);
+                ctx.stroke();
+              }
             }
+            
+            // Multi-layered foliage for more natural look
+            const foliageY = screenY + screenHeight * 0.55;
+            const centerX = screenX + screenWidth / 2;
+            
+            // Create multiple foliage clusters
+            const clusters = [
+              // Back layer clusters (darker)
+              {x: centerX + objDepth * 0.2, y: foliageY - objDepth * 0.2, r: foliageRadius * 0.8, shade: 0.5},
+              {x: centerX - foliageRadius * 0.3 + objDepth * 0.2, y: foliageY + foliageRadius * 0.2 - objDepth * 0.2, r: foliageRadius * 0.6, shade: 0.55},
+              {x: centerX + foliageRadius * 0.3 + objDepth * 0.2, y: foliageY + foliageRadius * 0.2 - objDepth * 0.2, r: foliageRadius * 0.6, shade: 0.55},
+              
+              // Middle layer clusters
+              {x: centerX, y: foliageY - foliageRadius * 0.3, r: foliageRadius * 0.7, shade: 0.7},
+              {x: centerX - foliageRadius * 0.4, y: foliageY, r: foliageRadius * 0.75, shade: 0.75},
+              {x: centerX + foliageRadius * 0.4, y: foliageY, r: foliageRadius * 0.75, shade: 0.75},
+              
+              // Front layer clusters (brightest)
+              {x: centerX, y: foliageY, r: foliageRadius, shade: 1},
+              {x: centerX - foliageRadius * 0.25, y: foliageY + foliageRadius * 0.3, r: foliageRadius * 0.65, shade: 0.9},
+              {x: centerX + foliageRadius * 0.25, y: foliageY + foliageRadius * 0.3, r: foliageRadius * 0.65, shade: 0.9},
+              {x: centerX, y: foliageY - foliageRadius * 0.2, r: foliageRadius * 0.5, shade: 0.95}
+            ];
+            
+            // Draw each cluster
+            clusters.forEach(cluster => {
+              const clusterBrightness = brightness * cluster.shade;
+              ctx.fillStyle = `rgb(${Math.floor(r * clusterBrightness)}, ${Math.floor(g * clusterBrightness)}, ${Math.floor(b * clusterBrightness)})`;
+              ctx.beginPath();
+              ctx.arc(cluster.x, cluster.y, cluster.r, 0, 2 * Math.PI);
+              ctx.fill();
+            });
+            
+            // Add some texture dots for leaves effect
+            if (screenWidth > 40) {
+              ctx.fillStyle = `rgb(${Math.floor(r * brightness * 1.2)}, ${Math.floor(g * brightness * 1.2)}, ${Math.floor(b * brightness * 1.2)})`;
+              for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const leafX = centerX + Math.cos(angle) * foliageRadius * 0.7;
+                const leafY = foliageY + Math.sin(angle) * foliageRadius * 0.5;
+                ctx.beginPath();
+                ctx.arc(leafX, leafY, 3, 0, 2 * Math.PI);
+                ctx.fill();
+              }
+            }
+            
+          } else if (obj.type === 'rock') {
+            // Draw more realistic layered rock
+            const rockCenterX = screenX + screenWidth / 2;
+            const rockCenterY = screenY + screenHeight * 0.7;
+            
+            // Create multiple rock layers for natural appearance
+            const rockLayers = [
+              // Back shadow layer
+              {
+                points: [
+                  {x: rockCenterX - screenWidth * 0.4 + objDepth * 0.3, y: rockCenterY + screenHeight * 0.3},
+                  {x: rockCenterX - screenWidth * 0.2 + objDepth * 0.3, y: rockCenterY - screenHeight * 0.2 - objDepth * 0.2},
+                  {x: rockCenterX + screenWidth * 0.3 + objDepth * 0.3, y: rockCenterY - screenHeight * 0.15 - objDepth * 0.2},
+                  {x: rockCenterX + screenWidth * 0.4 + objDepth * 0.3, y: rockCenterY + screenHeight * 0.2},
+                  {x: rockCenterX + objDepth * 0.3, y: rockCenterY + screenHeight * 0.3}
+                ],
+                shade: 0.5
+              },
+              // Middle layer
+              {
+                points: [
+                  {x: rockCenterX - screenWidth * 0.35, y: rockCenterY + screenHeight * 0.25},
+                  {x: rockCenterX - screenWidth * 0.25, y: rockCenterY - screenHeight * 0.15},
+                  {x: rockCenterX + screenWidth * 0.1, y: rockCenterY - screenHeight * 0.2},
+                  {x: rockCenterX + screenWidth * 0.35, y: rockCenterY},
+                  {x: rockCenterX + screenWidth * 0.3, y: rockCenterY + screenHeight * 0.25},
+                  {x: rockCenterX - screenWidth * 0.1, y: rockCenterY + screenHeight * 0.3}
+                ],
+                shade: 0.7
+              },
+              // Front highlight layer
+              {
+                points: [
+                  {x: rockCenterX - screenWidth * 0.3, y: rockCenterY + screenHeight * 0.2},
+                  {x: rockCenterX - screenWidth * 0.2, y: rockCenterY - screenHeight * 0.1},
+                  {x: rockCenterX + screenWidth * 0.05, y: rockCenterY - screenHeight * 0.15},
+                  {x: rockCenterX + screenWidth * 0.25, y: rockCenterY + screenHeight * 0.05},
+                  {x: rockCenterX + screenWidth * 0.15, y: rockCenterY + screenHeight * 0.2},
+                  {x: rockCenterX - screenWidth * 0.15, y: rockCenterY + screenHeight * 0.25}
+                ],
+                shade: 1
+              }
+            ];
+            
+            // Draw each rock layer
+            rockLayers.forEach(layer => {
+              const layerBrightness = brightness * layer.shade;
+              ctx.fillStyle = `rgb(${Math.floor(r * layerBrightness)}, ${Math.floor(g * layerBrightness)}, ${Math.floor(b * layerBrightness)})`;
+              ctx.beginPath();
+              ctx.moveTo(layer.points[0].x, layer.points[0].y);
+              layer.points.forEach(point => ctx.lineTo(point.x, point.y));
+              ctx.closePath();
+              ctx.fill();
+            });
+            
+            // Add texture spots for more realistic appearance
+            if (screenWidth > 25) {
+              // Darker spots
+              ctx.fillStyle = `rgb(${Math.floor(r * brightness * 0.4)}, ${Math.floor(g * brightness * 0.4)}, ${Math.floor(b * brightness * 0.4)})`;
+              for (let i = 0; i < 3; i++) {
+                const spotX = rockCenterX + (Math.random() - 0.5) * screenWidth * 0.4;
+                const spotY = rockCenterY + (Math.random() - 0.5) * screenHeight * 0.3;
+                ctx.beginPath();
+                ctx.arc(spotX, spotY, 2 + Math.random() * 2, 0, 2 * Math.PI);
+                ctx.fill();
+              }
+              
+              // Lighter spots
+              ctx.fillStyle = `rgb(${Math.floor(r * brightness * 1.2)}, ${Math.floor(g * brightness * 1.2)}, ${Math.floor(b * brightness * 1.2)})`;
+              for (let i = 0; i < 2; i++) {
+                const spotX = rockCenterX + (Math.random() - 0.5) * screenWidth * 0.3;
+                const spotY = rockCenterY + (Math.random() - 0.5) * screenHeight * 0.2 - screenHeight * 0.1;
+                ctx.beginPath();
+                ctx.arc(spotX, spotY, 1 + Math.random() * 2, 0, 2 * Math.PI);
+                ctx.fill();
+              }
+            }
+            
+          } else if (obj.type === 'house') {
+            // Draw detailed house with multiple layers and features
+            
+            // Foundation/base
+            ctx.fillStyle = `rgb(${Math.floor(80 * brightness)}, ${Math.floor(80 * brightness)}, ${Math.floor(80 * brightness)})`;
+            ctx.fillRect(screenX - screenWidth * 0.05, screenY + screenHeight * 0.95, screenWidth * 1.1, screenHeight * 0.05);
+            
+            // Right side wall with gradient effect
+            const wallGradient = ctx.createLinearGradient(screenX + screenWidth, screenY, screenX + screenWidth + objDepth, screenY);
+            wallGradient.addColorStop(0, `rgb(${Math.floor(r * brightness * 0.7)}, ${Math.floor(g * brightness * 0.7)}, ${Math.floor(b * brightness * 0.7)})`);
+            wallGradient.addColorStop(1, `rgb(${Math.floor(r * brightness * 0.5)}, ${Math.floor(g * brightness * 0.5)}, ${Math.floor(b * brightness * 0.5)})`);
+            ctx.fillStyle = wallGradient;
+            ctx.beginPath();
+            ctx.moveTo(screenX + screenWidth, screenY);
+            ctx.lineTo(screenX + screenWidth + objDepth, screenY - objDepth * 0.7);
+            ctx.lineTo(screenX + screenWidth + objDepth, screenY + screenHeight - objDepth * 0.7);
+            ctx.lineTo(screenX + screenWidth, screenY + screenHeight);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Add texture lines to side wall
+            if (screenWidth > 30) {
+              ctx.strokeStyle = `rgb(${Math.floor(r * brightness * 0.6)}, ${Math.floor(g * brightness * 0.6)}, ${Math.floor(b * brightness * 0.6)})`;
+              ctx.lineWidth = 1;
+              for (let i = 1; i < 4; i++) {
+                ctx.beginPath();
+                ctx.moveTo(screenX + screenWidth, screenY + screenHeight * (i * 0.25));
+                ctx.lineTo(screenX + screenWidth + objDepth, screenY + screenHeight * (i * 0.25) - objDepth * 0.7);
+                ctx.stroke();
+              }
+            }
+            
+            // Roof layers
+            // Roof side (darker)
+            ctx.fillStyle = `rgb(${Math.floor(120 * brightness * 0.5)}, ${Math.floor(60 * brightness * 0.5)}, ${Math.floor(30 * brightness * 0.5)})`;
+            ctx.beginPath();
+            ctx.moveTo(screenX + screenWidth, screenY);
+            ctx.lineTo(screenX + screenWidth / 2, screenY - screenHeight * 0.35);
+            ctx.lineTo(screenX + screenWidth / 2 + objDepth, screenY - screenHeight * 0.35 - objDepth * 0.7);
+            ctx.lineTo(screenX + screenWidth + objDepth, screenY - objDepth * 0.7);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Chimney
+            if (screenWidth > 40) {
+              const chimneyWidth = screenWidth * 0.1;
+              const chimneyHeight = screenHeight * 0.2;
+              const chimneyX = screenX + screenWidth * 0.7;
+              const chimneyY = screenY - screenHeight * 0.15;
+              
+              // Chimney side
+              ctx.fillStyle = `rgb(${Math.floor(100 * brightness * 0.6)}, ${Math.floor(50 * brightness * 0.6)}, ${Math.floor(50 * brightness * 0.6)})`;
+              ctx.fillRect(chimneyX + chimneyWidth, chimneyY - chimneyHeight - objDepth * 0.2, objDepth * 0.2, chimneyHeight);
+              
+              // Chimney front
+              ctx.fillStyle = `rgb(${Math.floor(120 * brightness)}, ${Math.floor(60 * brightness)}, ${Math.floor(60 * brightness)})`;
+              ctx.fillRect(chimneyX, chimneyY - chimneyHeight, chimneyWidth, chimneyHeight);
+            }
+            
+            // Front wall with texture
+            ctx.fillStyle = adjustedColor;
+            ctx.fillRect(screenX, screenY, screenWidth, screenHeight);
+            
+            // Add wall texture (horizontal siding)
+            if (screenWidth > 25) {
+              ctx.strokeStyle = `rgb(${Math.floor(r * brightness * 0.8)}, ${Math.floor(g * brightness * 0.8)}, ${Math.floor(b * brightness * 0.8)})`;
+              ctx.lineWidth = 1;
+              for (let i = 1; i < 6; i++) {
+                ctx.beginPath();
+                ctx.moveTo(screenX, screenY + screenHeight * (i * 0.16));
+                ctx.lineTo(screenX + screenWidth, screenY + screenHeight * (i * 0.16));
+                ctx.stroke();
+              }
+            }
+            
+            // Front roof with shingles effect
+            ctx.fillStyle = `rgb(${Math.floor(160 * brightness)}, ${Math.floor(82 * brightness)}, ${Math.floor(45 * brightness)})`;
+            ctx.beginPath();
+            ctx.moveTo(screenX - screenWidth * 0.15, screenY);
+            ctx.lineTo(screenX + screenWidth / 2, screenY - screenHeight * 0.35);
+            ctx.lineTo(screenX + screenWidth * 1.15, screenY);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Roof edge/trim
+            ctx.strokeStyle = `rgb(${Math.floor(100 * brightness)}, ${Math.floor(50 * brightness)}, ${Math.floor(25 * brightness)})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(screenX - screenWidth * 0.15, screenY);
+            ctx.lineTo(screenX + screenWidth / 2, screenY - screenHeight * 0.35);
+            ctx.lineTo(screenX + screenWidth * 1.15, screenY);
+            ctx.stroke();
+            
+            // Windows with frames and reflections
+            if (screenWidth > 35) {
+              const windowWidth = screenWidth * 0.18;
+              const windowHeight = screenHeight * 0.2;
+              
+              // Left window
+              const leftWinX = screenX + screenWidth * 0.2;
+              const leftWinY = screenY + screenHeight * 0.3;
+              
+              // Window frame
+              ctx.fillStyle = `rgb(${Math.floor(80 * brightness)}, ${Math.floor(60 * brightness)}, ${Math.floor(40 * brightness)})`;
+              ctx.fillRect(leftWinX - 3, leftWinY - 3, windowWidth + 6, windowHeight + 6);
+              
+              // Window glass
+              ctx.fillStyle = `rgb(${Math.floor(135 * brightness)}, ${Math.floor(206 * brightness)}, ${Math.floor(235 * brightness)})`;
+              ctx.fillRect(leftWinX, leftWinY, windowWidth, windowHeight);
+              
+              // Window cross
+              ctx.strokeStyle = `rgb(${Math.floor(80 * brightness)}, ${Math.floor(60 * brightness)}, ${Math.floor(40 * brightness)})`;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(leftWinX + windowWidth / 2, leftWinY);
+              ctx.lineTo(leftWinX + windowWidth / 2, leftWinY + windowHeight);
+              ctx.moveTo(leftWinX, leftWinY + windowHeight / 2);
+              ctx.lineTo(leftWinX + windowWidth, leftWinY + windowHeight / 2);
+              ctx.stroke();
+              
+              // Right window (same structure)
+              const rightWinX = screenX + screenWidth * 0.62;
+              ctx.fillStyle = `rgb(${Math.floor(80 * brightness)}, ${Math.floor(60 * brightness)}, ${Math.floor(40 * brightness)})`;
+              ctx.fillRect(rightWinX - 3, leftWinY - 3, windowWidth + 6, windowHeight + 6);
+              ctx.fillStyle = `rgb(${Math.floor(135 * brightness)}, ${Math.floor(206 * brightness)}, ${Math.floor(235 * brightness)})`;
+              ctx.fillRect(rightWinX, leftWinY, windowWidth, windowHeight);
+              ctx.beginPath();
+              ctx.moveTo(rightWinX + windowWidth / 2, leftWinY);
+              ctx.lineTo(rightWinX + windowWidth / 2, leftWinY + windowHeight);
+              ctx.moveTo(rightWinX, leftWinY + windowHeight / 2);
+              ctx.lineTo(rightWinX + windowWidth, leftWinY + windowHeight / 2);
+              ctx.stroke();
+            }
+            
+            // Detailed door
+            if (screenWidth > 25) {
+              const doorWidth = screenWidth * 0.22;
+              const doorHeight = screenHeight * 0.55;
+              const doorX = screenX + screenWidth / 2 - doorWidth / 2;
+              const doorY = screenY + screenHeight - doorHeight;
+              
+              // Door frame
+              ctx.fillStyle = `rgb(${Math.floor(60 * brightness)}, ${Math.floor(40 * brightness)}, ${Math.floor(20 * brightness)})`;
+              ctx.fillRect(doorX - 4, doorY - 4, doorWidth + 8, doorHeight + 8);
+              
+              // Door
+              ctx.fillStyle = `rgb(${Math.floor(101 * brightness)}, ${Math.floor(67 * brightness)}, ${Math.floor(33 * brightness)})`;
+              ctx.fillRect(doorX, doorY, doorWidth, doorHeight);
+              
+              // Door panels
+              if (screenWidth > 40) {
+                ctx.strokeStyle = `rgb(${Math.floor(80 * brightness)}, ${Math.floor(50 * brightness)}, ${Math.floor(25 * brightness)})`;
+                ctx.lineWidth = 1;
+                // Top panel
+                ctx.strokeRect(doorX + doorWidth * 0.15, doorY + doorHeight * 0.1, doorWidth * 0.7, doorHeight * 0.35);
+                // Bottom panel
+                ctx.strokeRect(doorX + doorWidth * 0.15, doorY + doorHeight * 0.55, doorWidth * 0.7, doorHeight * 0.35);
+              }
+              
+              // Door knob
+              ctx.fillStyle = `rgb(${Math.floor(255 * brightness)}, ${Math.floor(215 * brightness)}, ${Math.floor(0 * brightness)})`;
+              ctx.beginPath();
+              ctx.arc(doorX + doorWidth * 0.8, doorY + doorHeight * 0.5, 3, 0, 2 * Math.PI);
+              ctx.fill();
+              
+              // Door step
+              ctx.fillStyle = `rgb(${Math.floor(100 * brightness)}, ${Math.floor(100 * brightness)}, ${Math.floor(100 * brightness)})`;
+              ctx.fillRect(doorX - doorWidth * 0.1, doorY + doorHeight, doorWidth * 1.2, 3);
+            }
+          } else {
+            // Fallback simple rectangle
+            ctx.fillStyle = adjustedColor;
+            ctx.fillRect(screenX, screenY, screenWidth, screenHeight);
+          }
+          
+          // Draw highlight if this is the targeted object
+          if (obj === targetedObject) {
+            ctx.strokeStyle = '#FFFF00'; // Yellow outline
+            ctx.lineWidth = 3;
+            ctx.strokeRect(screenX - 2, screenY - 2, screenWidth + 4, screenHeight + 4);
           }
         }
       });
@@ -262,6 +766,144 @@
       ctx.moveTo(centerX, centerY - 10);
       ctx.lineTo(centerX, centerY + 10);
       ctx.stroke();
+    }
+
+    // This function draws the object selector UI at the bottom of the screen
+    function drawObjectSelector() {
+      const selectorHeight = 80;
+      const selectorY = canvas.height - selectorHeight - 20;
+      const itemWidth = 60;
+      const itemHeight = 60;
+      const spacing = 20;
+      const totalWidth = buildableTypes.length * itemWidth + (buildableTypes.length - 1) * spacing;
+      const startX = (canvas.width - totalWidth) / 2;
+
+      // Draw selector background
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(startX - 20, selectorY - 20, totalWidth + 40, selectorHeight + 40);
+
+      // Draw each buildable type
+      buildableTypes.forEach((type, index) => {
+        const x = startX + index * (itemWidth + spacing);
+        const y = selectorY;
+
+        // Draw background square
+        ctx.fillStyle = index === selectedObjectType ? '#444444' : '#222222';
+        ctx.fillRect(x, y, itemWidth, itemHeight);
+
+        // Draw selection border
+        if (index === selectedObjectType) {
+          ctx.strokeStyle = '#FFFF00';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(x - 2, y - 2, itemWidth + 4, itemHeight + 4);
+        }
+
+        // Draw icon based on type
+        ctx.save();
+        ctx.translate(x + itemWidth / 2, y + itemHeight / 2);
+        
+        switch(type) {
+          case 'tree':
+            // Draw detailed tree icon
+            // Trunk
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(-3, 5, 6, 15);
+            // Trunk texture
+            ctx.strokeStyle = '#654321';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(-1, 8);
+            ctx.lineTo(-1, 18);
+            ctx.moveTo(1, 8);
+            ctx.lineTo(1, 18);
+            ctx.stroke();
+            // Foliage clusters
+            const foliageColors = ['#228B22', '#2E8B57', '#006400'];
+            const clusters = [
+              {x: 0, y: -5, r: 12},
+              {x: -8, y: 0, r: 8},
+              {x: 8, y: 0, r: 8},
+              {x: 0, y: 5, r: 10}
+            ];
+            clusters.forEach((cluster, i) => {
+              ctx.fillStyle = foliageColors[i % foliageColors.length];
+              ctx.beginPath();
+              ctx.arc(cluster.x, cluster.y, cluster.r, 0, 2 * Math.PI);
+              ctx.fill();
+            });
+            break;
+          case 'rock':
+            // Draw detailed rock icon
+            ctx.fillStyle = '#696969';
+            ctx.beginPath();
+            ctx.moveTo(-12, 10);
+            ctx.lineTo(-8, -5);
+            ctx.lineTo(0, -8);
+            ctx.lineTo(10, -3);
+            ctx.lineTo(12, 8);
+            ctx.lineTo(5, 10);
+            ctx.closePath();
+            ctx.fill();
+            // Add shading
+            ctx.fillStyle = '#808080';
+            ctx.beginPath();
+            ctx.moveTo(-8, 5);
+            ctx.lineTo(-5, -3);
+            ctx.lineTo(5, 0);
+            ctx.lineTo(8, 5);
+            ctx.lineTo(0, 8);
+            ctx.closePath();
+            ctx.fill();
+            break;
+          case 'house':
+            // Draw detailed house icon
+            // Foundation
+            ctx.fillStyle = '#666666';
+            ctx.fillRect(-16, 13, 32, 2);
+            // Walls
+            ctx.fillStyle = '#D2691E';
+            ctx.fillRect(-15, -5, 30, 18);
+            // Wall texture
+            ctx.strokeStyle = '#A0522D';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i < 3; i++) {
+              ctx.beginPath();
+              ctx.moveTo(-15, -5 + i * 6);
+              ctx.lineTo(15, -5 + i * 6);
+              ctx.stroke();
+            }
+            // Roof
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.moveTo(-18, -5);
+            ctx.lineTo(0, -15);
+            ctx.lineTo(18, -5);
+            ctx.closePath();
+            ctx.fill();
+            // Windows
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(-10, 0, 6, 6);
+            ctx.fillRect(4, 0, 6, 6);
+            // Door
+            ctx.fillStyle = '#654321';
+            ctx.fillRect(-3, 3, 6, 10);
+            break;
+        }
+        
+        ctx.restore();
+
+        // Draw key hint
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText((index + 1).toString(), x + itemWidth / 2, y + itemHeight + 15);
+      });
+
+      // Draw instruction text
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '14px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Press 1-3 to select, B to build, SPACE to remove', canvas.width / 2, selectorY - 30);
     }
 
     // This function shows our compass direction
@@ -292,6 +934,25 @@
       ctx.font = '12px Arial';
       ctx.textAlign = 'center';
       ctx.fillText('N', compassX, compassY - compassRadius - 10);
+      
+      // Draw time of day indicator
+      const dayNight = getDayNightState();
+      const timeX = compassX;
+      const timeY = compassY + compassRadius + 30;
+      
+      // Background for time display
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(timeX - 40, timeY - 10, 80, 20);
+      
+      // Time text
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '14px Arial';
+      if (dayNight.isDay) {
+        const timeOfDay = dayNight.progress < 0.5 ? 'Morning' : 'Afternoon';
+        ctx.fillText(timeOfDay, timeX, timeY + 5);
+      } else {
+        ctx.fillText('Night', timeX, timeY + 5);
+      }
     }
 
     // This function updates our player position and rotation
@@ -342,9 +1003,10 @@
       // Step 3: Draw all world objects with 3D perspective
       drawWorldObjects();
 
-      // Step 4: Draw UI elements (crosshair and compass)
+      // Step 4: Draw UI elements (crosshair, compass, and object selector)
       drawCrosshair();
       drawCompass();
+      drawObjectSelector();
 
       // Step 5: Request the next frame (this makes the loop keep going)
       requestAnimationFrame(gameLoop);
@@ -376,6 +1038,86 @@
         case 'e':
           keys.turnRight = true;
           break;
+        case ' ':
+          // Remove targeted object
+          if (targetedObject) {
+            const index = worldObjects.indexOf(targetedObject);
+            if (index > -1) {
+              worldObjects.splice(index, 1);
+              targetedObject = null;
+            }
+          }
+          break;
+        case 'b':
+          // Build new object in front of player
+          const buildDistance = 100;
+          const newX = player.x + Math.cos(player.angle) * buildDistance;
+          const newY = player.y + Math.sin(player.angle) * buildDistance;
+          
+          const objectType = buildableTypes[selectedObjectType];
+          let newObject;
+          
+          switch(objectType) {
+            case 'tree':
+              const treeColors = ['#228B22', '#0F5F0F', '#2E8B57', '#006400'];
+              const treeWidths = [35, 40, 45, 50];
+              const treeHeights = [100, 110, 120, 130, 140, 150, 160];
+              const width = treeWidths[Math.floor(Math.random() * treeWidths.length)];
+              newObject = {
+                x: newX,
+                y: newY,
+                width: width,
+                height: treeHeights[Math.floor(Math.random() * treeHeights.length)],
+                depth: width,
+                color: treeColors[Math.floor(Math.random() * treeColors.length)],
+                type: 'tree'
+              };
+              break;
+            case 'rock':
+              const rockColors = ['#696969', '#808080', '#A9A9A9', '#708090'];
+              const rockWidths = [22, 25, 28, 30, 32, 35, 40];
+              const rockHeights = [18, 20, 22, 25, 28, 30, 35];
+              const rockWidth = rockWidths[Math.floor(Math.random() * rockWidths.length)];
+              newObject = {
+                x: newX,
+                y: newY,
+                width: rockWidth,
+                height: rockHeights[Math.floor(Math.random() * rockHeights.length)],
+                depth: rockWidth,
+                color: rockColors[Math.floor(Math.random() * rockColors.length)],
+                type: 'rock'
+              };
+              break;
+            case 'house':
+              const houseColors = ['#D2691E', '#CD853F', '#8B4513', '#A0522D'];
+              const houseWidths = [70, 75, 80, 85, 90];
+              const houseHeights = [90, 95, 100, 105, 110];
+              const houseWidth = houseWidths[Math.floor(Math.random() * houseWidths.length)];
+              newObject = {
+                x: newX,
+                y: newY,
+                width: houseWidth,
+                height: houseHeights[Math.floor(Math.random() * houseHeights.length)],
+                depth: houseWidth * 0.75,
+                color: houseColors[Math.floor(Math.random() * houseColors.length)],
+                type: 'house'
+              };
+              break;
+          }
+          
+          if (newObject) {
+            worldObjects.push(newObject);
+          }
+          break;
+        case '1':
+          selectedObjectType = 0;
+          break;
+        case '2':
+          selectedObjectType = 1;
+          break;
+        case '3':
+          selectedObjectType = 2;
+          break;
       }
     });
 
@@ -405,6 +1147,41 @@
         case 'e':
           keys.turnRight = false;
           break;
+      }
+    });
+
+    // Handle mouse movement for looking around
+    document.addEventListener('mousemove', function(event) {
+      if (mouseControlsActive) {
+        const sensitivity = 0.002;
+        player.angle += event.movementX * sensitivity;
+        player.pitch -= event.movementY * sensitivity; // Negative for natural mouse look
+        
+        // Normalize angle to stay within -PI to PI
+        while (player.angle > Math.PI) player.angle -= 2 * Math.PI;
+        while (player.angle < -Math.PI) player.angle += 2 * Math.PI;
+        
+        // Clamp pitch to prevent looking too far up or down
+        player.pitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, player.pitch));
+      }
+    });
+
+    // Click to activate mouse controls
+    canvas.addEventListener('click', function() {
+      if (!mouseControlsActive) {
+        canvas.requestPointerLock();
+      }
+    });
+
+    // Handle pointer lock change
+    document.addEventListener('pointerlockchange', function() {
+      mouseControlsActive = document.pointerLockElement === canvas;
+    });
+
+    // Handle escape key to exit pointer lock
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' && mouseControlsActive) {
+        document.exitPointerLock();
       }
     });
 
