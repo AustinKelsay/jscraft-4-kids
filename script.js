@@ -114,6 +114,55 @@ const CONFIG = {
   ui: {
     compassSize: 80,          // Compass diameter in pixels
     selectorItemSize: 60      // Object selector button size
+  },
+  
+  // Interior world settings
+  interior: {
+    roomSize: 15,             // Interior room dimensions
+    ceilingHeight: 3,         // Room height
+    floorColor: 0x654321,     // Wood floor
+    wallColor: 0xF5F5DC,      // Beige walls
+    ceilingColor: 0xFFFFFF,   // White ceiling
+    doorHighlightColor: 0x00FF00, // Green door highlight
+    furniture: {
+      chair: {
+        seatColor: 0x8B4513,  // Brown seat
+        legColor: 0x654321,   // Dark brown legs
+        height: 0.8,
+        width: 0.5,
+        depth: 0.5
+      },
+      table: {
+        topColor: 0x8B4513,   // Brown top
+        legColor: 0x654321,   // Dark brown legs
+        height: 0.75,
+        width: 1.5,
+        depth: 0.8
+      },
+      couch: {
+        mainColor: 0x4169E1,  // Royal blue
+        cushionColor: 0x6495ED, // Cornflower blue
+        length: 2,
+        width: 0.8,
+        height: 0.7
+      },
+      tv: {
+        frameColor: 0x2F2F2F, // Dark gray frame
+        screenColor: 0x000000, // Black screen
+        standColor: 0x4F4F4F,  // Gray stand
+        width: 1.2,
+        height: 0.7,
+        depth: 0.1
+      },
+      bed: {
+        frameColor: 0x8B4513,  // Brown frame
+        mattressColor: 0xF0E68C, // Khaki mattress
+        pillowColor: 0xFFFFFF, // White pillow
+        length: 2,
+        width: 1.5,
+        height: 0.5
+      }
+    }
   }
 };
 
@@ -177,6 +226,18 @@ let ghostObject = null;
 const worldObjects = [];
 const animals = [];  // Track animals for movement updates
 let interactableObjects;
+
+/**
+ * Interior world state management
+ */
+const worldState = {
+  isInside: false,                    // Whether player is inside a building
+  currentHouse: null,                 // Reference to the house player entered
+  outsidePosition: new THREE.Vector3(), // Player position before entering
+  outsideRotation: { yaw: 0, pitch: 0 }, // Camera rotation before entering
+  interiorObjects: [],                // Objects in the current interior
+  interiorGroup: null                 // Group containing all interior objects
+};
 
 /**
  * Lighting and environment
@@ -583,13 +644,21 @@ function createHouse(x, z) {
   roof.receiveShadow = true;
   house.add(roof);
   
-  // Door
+  // Door (interactive)
   const doorGeometry = new THREE.BoxGeometry(size * 0.2, size * 0.4, 0.1);
   const doorMaterial = new THREE.MeshStandardMaterial({ 
     color: CONFIG.objects.house.doorColor 
   });
   const door = new THREE.Mesh(doorGeometry, doorMaterial);
   door.position.set(0, size * 0.2, size * 0.51);
+  // Make door interactive
+  door.userData = { 
+    type: 'door', 
+    isInteractive: true,
+    parentHouse: house,
+    originalMaterial: doorMaterial
+  };
+  door.name = 'door'; // For easy identification
   house.add(door);
   
   // Windows
@@ -611,7 +680,12 @@ function createHouse(x, z) {
   
   house.position.set(x, 0, z);
   house.rotation.y = Math.random() * Math.PI * 2;
-  house.userData = { type: 'house', removable: true };
+  house.userData = { 
+    type: 'house', 
+    removable: true,
+    door: door,
+    size: size
+  };
   
   interactableObjects.add(house);
   worldObjects.push(house);
@@ -1028,6 +1102,488 @@ function createHorse(x, z) {
 }
 
 // ===================================================================
+// INTERIOR WORLD SYSTEM
+// ===================================================================
+
+/**
+ * Creates an interior room environment
+ * @param {THREE.Object3D} house - The house object being entered
+ */
+function createInterior(house) {
+  // Create interior group
+  worldState.interiorGroup = new THREE.Group();
+  worldState.interiorGroup.name = 'interior';
+  
+  const roomSize = CONFIG.interior.roomSize;
+  const height = CONFIG.interior.ceilingHeight;
+  
+  // Floor
+  const floorGeometry = new THREE.BoxGeometry(roomSize, 0.1, roomSize);
+  const floorMaterial = new THREE.MeshStandardMaterial({ 
+    color: CONFIG.interior.floorColor,
+    roughness: 0.8
+  });
+  const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+  floor.position.y = -0.05;
+  floor.receiveShadow = true;
+  worldState.interiorGroup.add(floor);
+  
+  // Walls
+  const wallMaterial = new THREE.MeshStandardMaterial({ 
+    color: CONFIG.interior.wallColor,
+    roughness: 0.9
+  });
+  
+  // Back wall
+  const backWallGeometry = new THREE.BoxGeometry(roomSize, height, 0.2);
+  const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
+  backWall.position.set(0, height / 2, -roomSize / 2);
+  backWall.receiveShadow = true;
+  worldState.interiorGroup.add(backWall);
+  
+  // Left wall
+  const sideWallGeometry = new THREE.BoxGeometry(0.2, height, roomSize);
+  const leftWall = new THREE.Mesh(sideWallGeometry, wallMaterial);
+  leftWall.position.set(-roomSize / 2, height / 2, 0);
+  leftWall.receiveShadow = true;
+  worldState.interiorGroup.add(leftWall);
+  
+  // Right wall
+  const rightWall = new THREE.Mesh(sideWallGeometry, wallMaterial);
+  rightWall.position.set(roomSize / 2, height / 2, 0);
+  rightWall.receiveShadow = true;
+  worldState.interiorGroup.add(rightWall);
+  
+  // Front wall with door opening
+  const frontWallLeftGeometry = new THREE.BoxGeometry(roomSize / 2 - 1, height, 0.2);
+  const frontWallLeft = new THREE.Mesh(frontWallLeftGeometry, wallMaterial);
+  frontWallLeft.position.set(-roomSize / 4 - 0.5, height / 2, roomSize / 2);
+  frontWallLeft.receiveShadow = true;
+  worldState.interiorGroup.add(frontWallLeft);
+  
+  const frontWallRightGeometry = new THREE.BoxGeometry(roomSize / 2 - 1, height, 0.2);
+  const frontWallRight = new THREE.Mesh(frontWallRightGeometry, wallMaterial);
+  frontWallRight.position.set(roomSize / 4 + 0.5, height / 2, roomSize / 2);
+  frontWallRight.receiveShadow = true;
+  worldState.interiorGroup.add(frontWallRight);
+  
+  // Top of door frame
+  const doorFrameTopGeometry = new THREE.BoxGeometry(2, height - 2.2, 0.2);
+  const doorFrameTop = new THREE.Mesh(doorFrameTopGeometry, wallMaterial);
+  doorFrameTop.position.set(0, height - (height - 2.2) / 2, roomSize / 2);
+  doorFrameTop.receiveShadow = true;
+  worldState.interiorGroup.add(doorFrameTop);
+  
+  // Ceiling
+  const ceilingGeometry = new THREE.BoxGeometry(roomSize, 0.1, roomSize);
+  const ceilingMaterial = new THREE.MeshStandardMaterial({ 
+    color: CONFIG.interior.ceilingColor,
+    roughness: 1
+  });
+  const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
+  ceiling.position.y = height;
+  ceiling.receiveShadow = true;
+  worldState.interiorGroup.add(ceiling);
+  
+  // Exit door (interactive)
+  const exitDoorGeometry = new THREE.BoxGeometry(1.8, 2.2, 0.15);
+  const exitDoorMaterial = new THREE.MeshStandardMaterial({ 
+    color: CONFIG.objects.house.doorColor
+  });
+  const exitDoor = new THREE.Mesh(exitDoorGeometry, exitDoorMaterial);
+  exitDoor.position.set(0, 1.1, roomSize / 2 - 0.1);
+  exitDoor.userData = {
+    type: 'door',
+    isInteractive: true,
+    isExitDoor: true,
+    originalMaterial: exitDoorMaterial
+  };
+  exitDoor.name = 'exitDoor';
+  worldState.interiorGroup.add(exitDoor);
+  
+  // Interior lighting
+  const interiorLight = new THREE.PointLight(0xFFFFFF, 0.8, 20);
+  interiorLight.position.set(0, height - 0.5, 0);
+  interiorLight.castShadow = true;
+  interiorLight.shadow.mapSize.width = 1024;
+  interiorLight.shadow.mapSize.height = 1024;
+  worldState.interiorGroup.add(interiorLight);
+  
+  // Add furniture
+  addFurnitureToInterior();
+  
+  // Add the interior to the scene
+  scene.add(worldState.interiorGroup);
+  
+  // Store interior objects for cleanup
+  worldState.interiorGroup.traverse(child => {
+    if (child.isMesh) {
+      worldState.interiorObjects.push(child);
+    }
+  });
+}
+
+/**
+ * Adds furniture to the interior
+ */
+function addFurnitureToInterior() {
+  const roomSize = CONFIG.interior.roomSize;
+  
+  // Living area - left side
+  const couch = createCouch();
+  couch.position.set(-roomSize / 3, 0, -roomSize / 3);
+  couch.rotation.y = Math.PI / 2;
+  worldState.interiorGroup.add(couch);
+  
+  const table = createTable();
+  table.position.set(-roomSize / 3, 0, 0);
+  worldState.interiorGroup.add(table);
+  
+  const tv = createTV();
+  tv.position.set(-roomSize / 2 + 0.7, 0, 0);
+  tv.rotation.y = Math.PI / 2;
+  worldState.interiorGroup.add(tv);
+  
+  // Dining area - right side
+  const diningTable = createTable();
+  diningTable.position.set(roomSize / 3, 0, -roomSize / 4);
+  worldState.interiorGroup.add(diningTable);
+  
+  // Add chairs around dining table
+  const chair1 = createChair();
+  chair1.position.set(roomSize / 3 - 0.8, 0, -roomSize / 4);
+  chair1.rotation.y = Math.PI / 2;
+  worldState.interiorGroup.add(chair1);
+  
+  const chair2 = createChair();
+  chair2.position.set(roomSize / 3 + 0.8, 0, -roomSize / 4);
+  chair2.rotation.y = -Math.PI / 2;
+  worldState.interiorGroup.add(chair2);
+  
+  // Bedroom area - back
+  const bed = createBed();
+  bed.position.set(0, 0, -roomSize / 2 + 1.5);
+  worldState.interiorGroup.add(bed);
+}
+
+/**
+ * Removes the interior and restores the outside world
+ */
+function removeInterior() {
+  if (worldState.interiorGroup) {
+    // Remove all interior objects
+    worldState.interiorObjects.forEach(obj => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach(mat => mat.dispose());
+        } else {
+          obj.material.dispose();
+        }
+      }
+    });
+    
+    scene.remove(worldState.interiorGroup);
+    worldState.interiorGroup = null;
+    worldState.interiorObjects = [];
+  }
+}
+
+// ===================================================================
+// FURNITURE CREATION FUNCTIONS
+// ===================================================================
+
+/**
+ * Creates a chair object
+ * @returns {THREE.Group} Chair group
+ */
+function createChair() {
+  const chair = new THREE.Group();
+  const config = CONFIG.interior.furniture.chair;
+  
+  // Seat
+  const seatGeometry = new THREE.BoxGeometry(config.width, 0.05, config.depth);
+  const seatMaterial = new THREE.MeshStandardMaterial({ 
+    color: config.seatColor,
+    roughness: 0.7
+  });
+  const seat = new THREE.Mesh(seatGeometry, seatMaterial);
+  seat.position.y = config.height / 2;
+  seat.castShadow = true;
+  seat.receiveShadow = true;
+  chair.add(seat);
+  
+  // Backrest
+  const backGeometry = new THREE.BoxGeometry(config.width, config.height / 2, 0.05);
+  const back = new THREE.Mesh(backGeometry, seatMaterial);
+  back.position.set(0, config.height * 0.75, -config.depth / 2 + 0.025);
+  back.castShadow = true;
+  chair.add(back);
+  
+  // Legs
+  const legGeometry = new THREE.CylinderGeometry(0.02, 0.02, config.height / 2);
+  const legMaterial = new THREE.MeshStandardMaterial({ 
+    color: config.legColor,
+    roughness: 0.8
+  });
+  
+  const legPositions = [
+    { x: config.width / 2 - 0.05, z: config.depth / 2 - 0.05 },
+    { x: -config.width / 2 + 0.05, z: config.depth / 2 - 0.05 },
+    { x: config.width / 2 - 0.05, z: -config.depth / 2 + 0.05 },
+    { x: -config.width / 2 + 0.05, z: -config.depth / 2 + 0.05 }
+  ];
+  
+  legPositions.forEach(pos => {
+    const leg = new THREE.Mesh(legGeometry, legMaterial);
+    leg.position.set(pos.x, config.height / 4, pos.z);
+    leg.castShadow = true;
+    chair.add(leg);
+  });
+  
+  return chair;
+}
+
+/**
+ * Creates a table object
+ * @returns {THREE.Group} Table group
+ */
+function createTable() {
+  const table = new THREE.Group();
+  const config = CONFIG.interior.furniture.table;
+  
+  // Table top
+  const topGeometry = new THREE.BoxGeometry(config.width, 0.05, config.depth);
+  const topMaterial = new THREE.MeshStandardMaterial({ 
+    color: config.topColor,
+    roughness: 0.6
+  });
+  const top = new THREE.Mesh(topGeometry, topMaterial);
+  top.position.y = config.height;
+  top.castShadow = true;
+  top.receiveShadow = true;
+  table.add(top);
+  
+  // Legs
+  const legGeometry = new THREE.BoxGeometry(0.05, config.height, 0.05);
+  const legMaterial = new THREE.MeshStandardMaterial({ 
+    color: config.legColor,
+    roughness: 0.8
+  });
+  
+  const legPositions = [
+    { x: config.width / 2 - 0.1, z: config.depth / 2 - 0.1 },
+    { x: -config.width / 2 + 0.1, z: config.depth / 2 - 0.1 },
+    { x: config.width / 2 - 0.1, z: -config.depth / 2 + 0.1 },
+    { x: -config.width / 2 + 0.1, z: -config.depth / 2 + 0.1 }
+  ];
+  
+  legPositions.forEach(pos => {
+    const leg = new THREE.Mesh(legGeometry, legMaterial);
+    leg.position.set(pos.x, config.height / 2, pos.z);
+    leg.castShadow = true;
+    table.add(leg);
+  });
+  
+  return table;
+}
+
+/**
+ * Creates a couch object
+ * @returns {THREE.Group} Couch group
+ */
+function createCouch() {
+  const couch = new THREE.Group();
+  const config = CONFIG.interior.furniture.couch;
+  
+  // Base
+  const baseGeometry = new THREE.BoxGeometry(config.length, config.height / 2, config.width);
+  const baseMaterial = new THREE.MeshStandardMaterial({ 
+    color: config.mainColor,
+    roughness: 0.8
+  });
+  const base = new THREE.Mesh(baseGeometry, baseMaterial);
+  base.position.y = config.height / 4;
+  base.castShadow = true;
+  base.receiveShadow = true;
+  couch.add(base);
+  
+  // Backrest
+  const backGeometry = new THREE.BoxGeometry(config.length, config.height / 2, 0.2);
+  const back = new THREE.Mesh(backGeometry, baseMaterial);
+  back.position.set(0, config.height * 0.5, -config.width / 2 + 0.1);
+  back.castShadow = true;
+  couch.add(back);
+  
+  // Armrests
+  const armGeometry = new THREE.BoxGeometry(0.2, config.height * 0.6, config.width);
+  const armMaterial = new THREE.MeshStandardMaterial({ 
+    color: config.mainColor,
+    roughness: 0.8
+  });
+  
+  const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+  leftArm.position.set(-config.length / 2 + 0.1, config.height * 0.3, 0);
+  leftArm.castShadow = true;
+  couch.add(leftArm);
+  
+  const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+  rightArm.position.set(config.length / 2 - 0.1, config.height * 0.3, 0);
+  rightArm.castShadow = true;
+  couch.add(rightArm);
+  
+  // Cushions
+  const cushionGeometry = new THREE.BoxGeometry(config.length / 3 - 0.1, 0.1, config.width - 0.2);
+  const cushionMaterial = new THREE.MeshStandardMaterial({ 
+    color: config.cushionColor,
+    roughness: 0.9
+  });
+  
+  for (let i = 0; i < 3; i++) {
+    const cushion = new THREE.Mesh(cushionGeometry, cushionMaterial);
+    cushion.position.set(
+      (i - 1) * (config.length / 3),
+      config.height / 2 + 0.05,
+      0.1
+    );
+    cushion.receiveShadow = true;
+    couch.add(cushion);
+  }
+  
+  return couch;
+}
+
+/**
+ * Creates a TV object
+ * @returns {THREE.Group} TV group
+ */
+function createTV() {
+  const tv = new THREE.Group();
+  const config = CONFIG.interior.furniture.tv;
+  
+  // Screen frame
+  const frameGeometry = new THREE.BoxGeometry(config.width, config.height, config.depth);
+  const frameMaterial = new THREE.MeshStandardMaterial({ 
+    color: config.frameColor,
+    roughness: 0.7
+  });
+  const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+  frame.position.y = 1.2;
+  frame.castShadow = true;
+  tv.add(frame);
+  
+  // Screen
+  const screenGeometry = new THREE.BoxGeometry(config.width - 0.1, config.height - 0.1, 0.01);
+  const screenMaterial = new THREE.MeshStandardMaterial({ 
+    color: config.screenColor,
+    roughness: 0.1,
+    metalness: 0.5
+  });
+  const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+  screen.position.set(0, 1.2, config.depth / 2);
+  tv.add(screen);
+  
+  // Stand
+  const standGeometry = new THREE.CylinderGeometry(0.15, 0.2, 0.8);
+  const standMaterial = new THREE.MeshStandardMaterial({ 
+    color: config.standColor,
+    roughness: 0.8
+  });
+  const stand = new THREE.Mesh(standGeometry, standMaterial);
+  stand.position.y = 0.4;
+  stand.castShadow = true;
+  tv.add(stand);
+  
+  // Base
+  const baseGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.05);
+  const base = new THREE.Mesh(baseGeometry, standMaterial);
+  base.position.y = 0.025;
+  base.castShadow = true;
+  tv.add(base);
+  
+  return tv;
+}
+
+/**
+ * Creates a bed object
+ * @returns {THREE.Group} Bed group
+ */
+function createBed() {
+  const bed = new THREE.Group();
+  const config = CONFIG.interior.furniture.bed;
+  
+  // Frame
+  const frameGeometry = new THREE.BoxGeometry(config.width, 0.3, config.length);
+  const frameMaterial = new THREE.MeshStandardMaterial({ 
+    color: config.frameColor,
+    roughness: 0.7
+  });
+  const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+  frame.position.y = 0.25;
+  frame.castShadow = true;
+  frame.receiveShadow = true;
+  bed.add(frame);
+  
+  // Mattress
+  const mattressGeometry = new THREE.BoxGeometry(config.width - 0.1, 0.2, config.length - 0.1);
+  const mattressMaterial = new THREE.MeshStandardMaterial({ 
+    color: config.mattressColor,
+    roughness: 0.9
+  });
+  const mattress = new THREE.Mesh(mattressGeometry, mattressMaterial);
+  mattress.position.y = 0.5;
+  mattress.receiveShadow = true;
+  bed.add(mattress);
+  
+  // Headboard
+  const headboardGeometry = new THREE.BoxGeometry(config.width, 0.8, 0.1);
+  const headboard = new THREE.Mesh(headboardGeometry, frameMaterial);
+  headboard.position.set(0, 0.7, -config.length / 2 + 0.05);
+  headboard.castShadow = true;
+  bed.add(headboard);
+  
+  // Pillows
+  const pillowGeometry = new THREE.BoxGeometry(0.4, 0.1, 0.3);
+  const pillowMaterial = new THREE.MeshStandardMaterial({ 
+    color: config.pillowColor,
+    roughness: 1
+  });
+  
+  const pillow1 = new THREE.Mesh(pillowGeometry, pillowMaterial);
+  pillow1.position.set(-config.width / 4, 0.65, -config.length / 2 + 0.3);
+  pillow1.rotation.z = 0.1;
+  bed.add(pillow1);
+  
+  const pillow2 = new THREE.Mesh(pillowGeometry, pillowMaterial);
+  pillow2.position.set(config.width / 4, 0.65, -config.length / 2 + 0.3);
+  pillow2.rotation.z = -0.1;
+  bed.add(pillow2);
+  
+  // Legs
+  const legGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.2);
+  const legMaterial = new THREE.MeshStandardMaterial({ 
+    color: config.frameColor,
+    roughness: 0.8
+  });
+  
+  const legPositions = [
+    { x: config.width / 2 - 0.1, z: config.length / 2 - 0.1 },
+    { x: -config.width / 2 + 0.1, z: config.length / 2 - 0.1 },
+    { x: config.width / 2 - 0.1, z: -config.length / 2 + 0.1 },
+    { x: -config.width / 2 + 0.1, z: -config.length / 2 + 0.1 }
+  ];
+  
+  legPositions.forEach(pos => {
+    const leg = new THREE.Mesh(legGeometry, legMaterial);
+    leg.position.set(pos.x, 0.1, pos.z);
+    leg.castShadow = true;
+    bed.add(leg);
+  });
+  
+  return bed;
+}
+
+// ===================================================================
 // INPUT HANDLING
 // ===================================================================
 
@@ -1146,8 +1702,107 @@ function onMouseMove(event) {
 }
 
 function onClick() {
+  // Check if clicking on a door
+  if (highlightedObject && highlightedObject.userData && highlightedObject.userData.type === 'door') {
+    handleDoorClick(highlightedObject);
+    return;
+  }
+  
+  // Otherwise handle pointer lock
   if (!mouseControls.active) {
     renderer.domElement.requestPointerLock();
+  }
+}
+
+/**
+ * Handles door click interactions
+ * @param {THREE.Mesh} door - The door being clicked
+ */
+function handleDoorClick(door) {
+  if (door.userData.isExitDoor) {
+    // Exit from interior to outside
+    exitToOutside();
+  } else if (door.userData.parentHouse) {
+    // Enter from outside to interior
+    enterHouse(door.userData.parentHouse);
+  }
+}
+
+/**
+ * Transitions from outside world to house interior
+ * @param {THREE.Object3D} house - The house being entered
+ */
+function enterHouse(house) {
+  // Save current outside position and rotation
+  worldState.outsidePosition.copy(camera.position);
+  worldState.outsideRotation.yaw = cameraController.yaw;
+  worldState.outsideRotation.pitch = cameraController.pitch;
+  worldState.currentHouse = house;
+  
+  // Hide outside world objects
+  interactableObjects.visible = false;
+  if (skyMesh) skyMesh.visible = false;
+  if (sunMesh) sunMesh.visible = false;
+  if (moonMesh) moonMesh.visible = false;
+  sunLight.visible = false;
+  moonLight.visible = false;
+  
+  // Adjust ambient light for interior
+  ambientLight.intensity = 0.5;
+  
+  // Create interior world
+  createInterior(house);
+  
+  // Position player inside near the door
+  camera.position.set(0, CONFIG.player.height, CONFIG.interior.roomSize / 2 - 2);
+  cameraController.yaw = Math.PI; // Face into the room
+  cameraController.pitch = 0;
+  
+  // Update world state
+  worldState.isInside = true;
+  
+  // Hide UI elements that aren't needed inside
+  if (uiElements.selector) {
+    uiElements.selector.style.display = 'none';
+  }
+}
+
+/**
+ * Transitions from house interior back to outside world
+ */
+function exitToOutside() {
+  // Remove interior
+  removeInterior();
+  
+  // Show outside world objects
+  interactableObjects.visible = true;
+  if (skyMesh) skyMesh.visible = true;
+  if (sunMesh) sunMesh.visible = true;
+  if (moonMesh) moonMesh.visible = true;
+  sunLight.visible = true;
+  moonLight.visible = true;
+  
+  // Restore ambient light
+  ambientLight.intensity = 0.3;
+  
+  // Restore player position and rotation
+  camera.position.copy(worldState.outsidePosition);
+  cameraController.yaw = worldState.outsideRotation.yaw;
+  cameraController.pitch = worldState.outsideRotation.pitch;
+  
+  // Update world state
+  worldState.isInside = false;
+  worldState.currentHouse = null;
+  
+  // Show UI elements
+  if (uiElements.selector) {
+    uiElements.selector.style.display = 'flex';
+  }
+  
+  // Reset any highlighted objects
+  if (highlightedObject) {
+    resetObjectHighlight(highlightedObject);
+    highlightedObject = null;
   }
 }
 
@@ -1286,9 +1941,17 @@ function updatePlayer(delta) {
   }
   
   // World boundaries
-  const boundary = CONFIG.world.size / 2;
-  camera.position.x = THREE.MathUtils.clamp(camera.position.x, -boundary, boundary);
-  camera.position.z = THREE.MathUtils.clamp(camera.position.z, -boundary, boundary);
+  if (worldState.isInside) {
+    // Interior boundaries
+    const interiorBoundary = CONFIG.interior.roomSize / 2 - 0.5; // Leave space for walls
+    camera.position.x = THREE.MathUtils.clamp(camera.position.x, -interiorBoundary, interiorBoundary);
+    camera.position.z = THREE.MathUtils.clamp(camera.position.z, -interiorBoundary, interiorBoundary);
+  } else {
+    // Outside world boundaries
+    const boundary = CONFIG.world.size / 2;
+    camera.position.x = THREE.MathUtils.clamp(camera.position.x, -boundary, boundary);
+    camera.position.z = THREE.MathUtils.clamp(camera.position.z, -boundary, boundary);
+  }
   
   // Mouse look with proper yaw/pitch control
   if (mouseControls.active && (mouseControls.movementX !== 0 || mouseControls.movementY !== 0)) {
@@ -1462,7 +2125,13 @@ function updateAnimals(delta) {
 function updateObjectHighlight() {
   // Cast ray from camera center
   raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-  const intersects = raycaster.intersectObjects(interactableObjects.children, true);
+  
+  // Include both world and interior objects
+  const objectsToCheck = worldState.isInside ? 
+    [worldState.interiorGroup] : 
+    interactableObjects.children;
+  
+  const intersects = raycaster.intersectObjects(objectsToCheck, true);
   
   // Reset previous highlight
   if (highlightedObject) {
@@ -1472,17 +2141,29 @@ function updateObjectHighlight() {
   
   // Highlight new object if within range
   if (intersects.length > 0) {
-    const object = findParentObject(intersects[0].object);
     const distance = intersects[0].distance;
     
-    if (object && object.userData.removable && distance < CONFIG.building.distance) {
+    // Check for door interactions first
+    let doorObject = intersects[0].object;
+    if (doorObject.userData && doorObject.userData.type === 'door' && 
+        doorObject.userData.isInteractive && distance < CONFIG.building.distance) {
+      highlightedObject = doorObject;
+      highlightDoor(doorObject);
+      return; // Don't check other objects if door is highlighted
+    }
+    
+    // Otherwise check for removable objects
+    const object = findParentObject(intersects[0].object);
+    if (object && object.userData.removable && distance < CONFIG.building.distance && !worldState.isInside) {
       highlightedObject = object;
       highlightObject(object);
     }
   }
   
-  // Update ghost object for building preview
-  updateGhostObject();
+  // Update ghost object for building preview (only outside)
+  if (!worldState.isInside) {
+    updateGhostObject();
+  }
 }
 
 function findParentObject(mesh) {
@@ -1504,12 +2185,33 @@ function highlightObject(object) {
 }
 
 function resetObjectHighlight(object) {
-  object.traverse(child => {
-    if (child.isMesh) {
-      child.material.emissive = new THREE.Color(0x000000);
-      child.material.emissiveIntensity = 0;
+  // Check if it's a door
+  if (object.userData && object.userData.type === 'door') {
+    // Restore original material for door
+    if (object.userData.originalMaterial) {
+      object.material = object.userData.originalMaterial;
     }
-  });
+  } else {
+    // Regular object highlight reset
+    object.traverse(child => {
+      if (child.isMesh) {
+        child.material.emissive = new THREE.Color(0x000000);
+        child.material.emissiveIntensity = 0;
+      }
+    });
+  }
+}
+
+/**
+ * Highlights an interactive door with green color
+ * @param {THREE.Mesh} door - The door mesh to highlight
+ */
+function highlightDoor(door) {
+  if (door.isMesh) {
+    door.material = door.material.clone();
+    door.material.emissive = new THREE.Color(CONFIG.interior.doorHighlightColor);
+    door.material.emissiveIntensity = 0.4;
+  }
 }
 
 /**
@@ -1649,6 +2351,9 @@ function getBuildPosition() {
 // ===================================================================
 
 function buildObject() {
+  // Don't build when inside
+  if (worldState.isInside) return;
+  
   const type = buildableTypes[selectedObjectType];
   
   // Don't build if fists are selected
@@ -1684,6 +2389,9 @@ function buildObject() {
  * Properly disposes of Three.js resources and updates arrays
  */
 function removeObject() {
+  // Don't remove objects when inside
+  if (worldState.isInside) return;
+  
   if (!highlightedObject || !highlightedObject.userData.removable) {
     return;
   }
@@ -1882,8 +2590,13 @@ function animate() {
   const delta = clock.getDelta();
   
   updatePlayer(delta);
-  updateDayNightCycle();
-  updateAnimals(delta);
+  
+  // Only update outside world systems when not inside
+  if (!worldState.isInside) {
+    updateDayNightCycle();
+    updateAnimals(delta);
+  }
+  
   updateObjectHighlight();
   
   renderer.render(scene, camera);

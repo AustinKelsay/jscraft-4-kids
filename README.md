@@ -45,6 +45,15 @@ Welcome to your first JavaScript first-person exploration game! This template gi
 - **Object selector** at the bottom shows buildable objects and animals
 - **Day/Night cycle**: Watch the sun and moon move across the sky!
 
+### Entering Houses (NEW!)
+You can now enter houses to explore their interiors:
+- **Hover over a door**: The door will highlight in green when you're close enough
+- **Click the door**: Enter the house and explore the furnished interior
+- **Inside features**: Living room with couch and TV, dining area with table and chairs, bedroom with bed
+- **Exit**: Click the interior door (also highlights green) to return outside to the same location
+
+Note: Building and removing objects is disabled while inside houses.
+
 ### Animals
 The game now features three types of animals that wander around the world:
 - **🐄 Cows**: Brown with white spots, simplified box-based design with horns and udders - move slowly with a gentle sway
@@ -69,6 +78,7 @@ This template teaches you important programming concepts:
 - **Object Building System**: Dynamic object creation and removal
 - **Lighting Systems**: DirectionalLight for sun/moon, AmbientLight for atmosphere
 - **Memory Management**: Proper disposal of 3D objects to prevent leaks
+- **Interior Worlds**: Scene transitions, state management, and interactive objects
 
 ## 🎨 Understanding the Code
 

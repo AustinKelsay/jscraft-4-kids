@@ -56,6 +56,15 @@ JSCraft 3D is an educational Three.js-based first-person exploration game for ki
    - Clean, simplified animal designs using basic geometries
    - Three animal types: Cow, Pig, Horse
 
+7. **Interior World System**:
+   - Interactive doors on houses (green highlight on hover)
+   - Click door to enter/exit houses
+   - Fixed-size interior rooms with furniture
+   - Separate world state management for inside/outside
+   - Interior lighting with point lights
+   - Movement boundaries adjusted for interior spaces
+   - Building/removing disabled when inside
+
 ### Key Technical Patterns
 
 - **Configuration-Driven**: All gameplay values in CONFIG object
@@ -68,16 +77,17 @@ JSCraft 3D is an educational Three.js-based first-person exploration game for ki
 ### Code Organization
 
 The script.js file follows a clear section structure:
-1. Configuration (CONFIG object)
-2. Game State (global variables)
+1. Configuration (CONFIG object with interior settings)
+2. Game State (global variables including worldState)
 3. Initialization
 4. World Creation
 5. Object Creation (including animals)
-6. Input Handling
-7. Helper Functions
-8. Camera Controls
-9. Game Logic (includes animal movement)
-10. Building System
-11. UI Elements
-12. Animation Loop
-13. Cleanup
+6. Interior World System (createInterior, furniture functions)
+7. Input Handling (door click handling)
+8. Helper Functions
+9. Camera Controls
+10. Game Logic (includes animal movement)
+11. Building System
+12. UI Elements
+13. Animation Loop
+14. Cleanup
