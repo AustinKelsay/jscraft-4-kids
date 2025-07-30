@@ -4,78 +4,80 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a JavaScript educational game project for kids learning 3D first-person game development. The project has evolved from a simple single-file HTML game to a Three.js-based implementation with proper 3D rendering.
+JSCraft 3D is an educational Three.js-based first-person exploration game for kids learning web game development. The project uses pure HTML/CSS/JavaScript with no build tools, making it accessible for beginners while demonstrating professional 3D graphics techniques.
 
 ## Development Commands
 
-This project has no build process or package.json. Development is straightforward:
-
-- **Run the game**: Simply open `index.html` in a web browser
-- **No build/lint/test commands**: This is a pure HTML/CSS/JS educational project with no tooling
+- **Run the game**: Open `index.html` in a web browser
+- **No build process**: This is a pure HTML/CSS/JS project with no package.json or build tools
+- **No linting/testing**: Educational project focused on simplicity
 
 ## High-Level Architecture
 
-### Current Implementation (Three.js)
+### Core Files
+- `index.html`: Entry point with Three.js CDN link (r128)
+- `script.js`: Main game logic (1900+ lines) with modular organization
+- `style.css`: Responsive styling with mobile support
 
-The game now uses Three.js for proper 3D rendering with a well-organized codebase:
+### Game Systems Architecture
 
-1. **Core Structure**:
-   - `index.html`: Semantic HTML with proper accessibility attributes
-   - `script.js`: Modular Three.js implementation with comprehensive CONFIG object
-   - `style.css`: Well-organized CSS with responsive design
+1. **Three.js Scene Graph**:
+   - Scene → Camera + Renderer + Objects
+   - Hierarchical object groups (interactableObjects)
+   - Named objects for debugging and management
 
-2. **Game Systems**:
-   - **Player System**: First-person camera with position, velocity, and jump mechanics
-   - **Input Handling**: 
-     - WASD/Arrow keys for movement
-     - Mouse look with pointer lock API
-     - Space for jump/remove objects
-     - B for building, 1-3 for object selection
-   - **World Generation**: Procedural placement of trees, rocks, and houses
-   - **Building System**: Real-time object placement/removal with ghost preview
-   - **Day/Night Cycle**: 2-minute days, 1-minute nights with dynamic lighting
-   - **Physics**: Basic gravity and ground collision
+2. **Player Controller**:
+   - Separated yaw/pitch camera rotation to prevent gimbal lock
+   - Physics-based movement with gravity and jumping
+   - Boundary clamping within world limits
 
-3. **Three.js Architecture**:
-   - Scene graph with named objects and groups
-   - Perspective camera with configurable FOV
-   - WebGL renderer with shadow mapping and pixel ratio optimization
-   - Raycaster for object interaction
-   - Dynamic lighting (sun/moon directional lights)
-   - Proper resource disposal to prevent memory leaks
+3. **Input System**:
+   - Keyboard state tracking (keys object)
+   - Pointer Lock API for immersive mouse controls
+   - Event-driven architecture with proper cleanup
 
-### Key Technical Implementation
+4. **Building System**:
+   - Raycasting for object targeting
+   - Ghost preview objects with transparency
+   - Dynamic object creation/removal with proper disposal
 
-- **Configuration**: Centralized CONFIG object for all game parameters
-- **Error Handling**: Try-catch blocks in critical functions
-- **Memory Management**: Proper disposal of Three.js objects
-- **Modular UI**: Separated UI creation functions
-- **Performance**: Shadow mapping, fog for distance culling, pixel ratio optimization
-- **Documentation**: JSDoc comments throughout the codebase
+5. **Rendering Pipeline**:
+   - Shadow mapping (PCFSoftShadowMap)
+   - Distance fog for performance
+   - Pixel ratio optimization for high DPI displays
+   - 60 FPS animation loop with delta timing
 
-## Code Organization
+6. **Animal System**:
+   - Autonomous movement with wander behavior
+   - Smooth path following with curved trajectories
+   - Individual animal properties (speed, wander radius)
+   - Idle and walking animations
+   - Boundary avoidance with soft edges
+   - Clean, simplified animal designs using basic geometries
+   - Three animal types: Cow, Pig, Horse
 
-The script.js file is organized into clear sections:
+### Key Technical Patterns
+
+- **Configuration-Driven**: All gameplay values in CONFIG object
+- **Memory Management**: disposeObject() for Three.js cleanup, separate animals array
+- **Error Boundaries**: Try-catch in critical initialization
+- **Vector Math**: Three.js Vector3 for all 3D calculations
+- **Event Cleanup**: Proper listener removal on window unload
+- **Object Pooling**: Separate arrays for static objects and moving animals
+
+### Code Organization
+
+The script.js file follows a clear section structure:
 1. Configuration (CONFIG object)
-2. Game State
+2. Game State (global variables)
 3. Initialization
 4. World Creation
-5. Object Creation
+5. Object Creation (including animals)
 6. Input Handling
 7. Helper Functions
 8. Camera Controls
-9. Game Logic
+9. Game Logic (includes animal movement)
 10. Building System
 11. UI Elements
 12. Animation Loop
 13. Cleanup
-
-## Important Notes for Future Development
-
-- All configurable values are in the CONFIG object - avoid magic numbers
-- The code is heavily commented for educational purposes
-- Three.js is loaded via CDN (version r128) with integrity check
-- Maintain simplicity and avoid complex build tools
-- Use the helper functions (disposeObject) for proper cleanup
-- Follow the established patterns for new features
-- Test on different screen sizes (responsive CSS included)

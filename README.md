@@ -37,12 +37,21 @@ Welcome to your first JavaScript first-person exploration game! This template gi
 - **B**: Build a new object in front of you
 - **0**: Select fists (remove mode)
 - **1-3**: Select object type to build (tree, rock, house)
+- **4-6**: Select animal type to spawn (cow, pig, horse)
 
 ### UI Elements
 - **White crosshair** in the center shows where you're looking
 - **Compass** in the top-left shows your direction and time of day
-- **Object selector** at the bottom shows buildable objects
+- **Object selector** at the bottom shows buildable objects and animals
 - **Day/Night cycle**: Watch the sun and moon move across the sky!
+
+### Animals
+The game now features three types of animals that wander around the world:
+- **🐄 Cows**: Brown with white spots, simplified box-based design with horns and udders - move slowly with a gentle sway
+- **🐷 Pigs**: Pink with distinctive snouts, clean box-based body design - move at medium speed with a waddle
+- **🐴 Horses**: Dark brown with black manes, elegant design with two-part legs - move quickly with grace
+
+Animals feature clean, recognizable shapes with simple geometry (boxes, cylinders, spheres), properly positioned features, and natural movement animations including walking, idle breathing, and occasional head turns. You can spawn new animals or remove existing ones just like other objects!
 
 ## 🧠 What You're Learning
 
@@ -66,7 +75,7 @@ This template teaches you important programming concepts:
 ### Project Structure
 The game consists of three main files:
 - **index.html**: The webpage structure with semantic HTML5
-- **script.js**: All game logic using Three.js (1300+ lines)
+- **script.js**: All game logic using Three.js (1900+ lines)
 - **style.css**: Responsive styling with mobile support
 
 ### Three.js Architecture
@@ -125,6 +134,7 @@ function animate() {
     
     updatePlayer(delta);             // Handle movement and physics
     updateDayNightCycle();           // Move sun/moon, change lighting
+    updateAnimals(delta);            // Update animal movement and animations
     updateObjectHighlight();         // Check what player is looking at
     
     renderer.render(scene, camera);  // Draw everything
@@ -138,6 +148,7 @@ function animate() {
 - **Dynamic Lighting**: Objects and sky change based on celestial positions
 - **Object Targeting**: Yellow highlight shows which object you can interact with
 - **Realistic Objects**: Trees with multiple foliage layers, procedurally deformed rocks, detailed houses with windows and doors
+- **Living Animals**: Cows, pigs, and horses that wander around with simple animations
 
 ## 🎯 Fun Challenges to Try
 
@@ -146,6 +157,9 @@ function animate() {
 2. **Speed Control**: Make your walking or turning faster or slower
 3. **Add Objects**: Create more trees, rocks, or houses in different locations
 4. **Object Types**: Design new object types with different shapes and details
+5. **Animal Colors**: Change cow spots to black, make pigs purple, or create golden horses
+6. **Animal Speeds**: Make cows run fast and horses move slowly for a silly effect
+7. **More Animals**: Add a whole farm of animals at different positions
 
 ### Intermediate Challenges
 1. **Collision Detection**: Make it so you can't walk through trees and houses
@@ -155,6 +169,10 @@ function animate() {
 5. **Animated Objects**: Make trees sway or add moving clouds
 6. **Build Limits**: Add resource management for building objects
 7. **Save/Load**: Save your world creations to local storage
+8. **Animal Sounds**: Add moo, oink, and neigh sounds when near animals
+9. **Animal Reactions**: Make animals run away when you get too close
+10. **Feeding System**: Let players feed animals to make them follow you
+11. **Baby Animals**: Create smaller versions that follow their parents
 
 ### Advanced Challenges
 1. **Larger World**: Create a bigger world with more diverse environments
@@ -163,6 +181,8 @@ function animate() {
 4. **NPCs**: Add other characters that move around or can be talked to
 5. **Minimap**: Add a small map showing your position and nearby objects
 6. **Procedural Generation**: Create random worlds each time you play
+7. **Animal AI**: Implement flocking behavior so animals move in groups
+8. **Farming System**: Plant crops that animals can eat, affecting their behavior
 
 ## 🔧 Customization Ideas
 
@@ -184,7 +204,13 @@ const CONFIG = {
             leavesColor: 0x228B22,  // Change tree color (hex format)
             minHeight: 4,           // Tree size variation
             maxHeight: 8
+        },
+        cow: {
+            bodyColor: 0x8B4513,    // Brown
+            moveSpeed: 2,           // How fast they walk
+            wanderRadius: 15        // How far they roam
         }
+        // Similar configs for pig and horse...
     }
 }
 ```
@@ -202,12 +228,18 @@ for (let i = 0; i < 5; i++) {
 
 // Create a house
 createHouse(100, 100);
+
+// Create animals
+createCow(30, 30);
+createPig(-20, 40);
+createHorse(60, -50);
 ```
 
-Objects are automatically added to the world with:
+Objects and animals are automatically added to the world with:
 - Shadows enabled
 - Collision detection ready (for future implementation)
 - Removable by looking at them and pressing SPACE
+- Animals have autonomous movement and animations
 
 ### Color Codes for Three.js
 Three.js uses hexadecimal color format (0x instead of #):
@@ -273,6 +305,7 @@ Congratulations! You now have a working first-person 3D exploration game built w
 - Walk around a 3D world with realistic physics
 - Look around smoothly with mouse controls
 - Build and remove objects dynamically
+- Spawn animals that move around autonomously
 - Experience day/night cycles with moving sun and moon
 - See realistic shadows and lighting effects
 
