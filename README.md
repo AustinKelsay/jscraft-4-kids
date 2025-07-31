@@ -83,10 +83,33 @@ This template teaches you important programming concepts:
 ## 🎨 Understanding the Code
 
 ### Project Structure
-The game consists of three main files:
+The game uses a modular architecture for development with a bundled version for deployment:
 - **index.html**: The webpage structure with semantic HTML5
-- **script.js**: All game logic using Three.js (1900+ lines)
 - **style.css**: Responsive styling with mobile support
+- **bundle.js**: Combined version of all modules for direct browser usage (no server needed)
+- **modules/**: Modular JavaScript files (for development)
+  - **main.js**: Entry point and game loop
+  - **config.js**: All game configuration values
+  - **gameState.js**: Global state management
+  - **world.js**: World creation and environment
+  - **objects.js**: Trees, rocks, and houses creation
+  - **animals.js**: Animal creation and movement
+  - **interior.js**: Interior world system and furniture
+  - **input.js**: Input handling and events
+  - **camera.js**: Camera controls and movement
+  - **player.js**: Player physics and movement
+  - **building.js**: Building and object placement system
+  - **ui.js**: UI elements and interface
+  - **dayNight.js**: Day/night cycle system
+  - **utils.js**: Helper functions
+
+### Modular Architecture Benefits
+The game uses a modular architecture for better code organization:
+- **Separation of Concerns**: Each module handles a specific aspect of the game
+- **Easier Maintenance**: Find and modify code more easily in development
+- **Better Scalability**: Add new features without cluttering existing code
+- **No Server Required**: The bundled version (`bundle.js`) works by opening `index.html` directly
+- **Development Flexibility**: Use ES6 modules for development, bundle for deployment
 
 ### Three.js Architecture
 This game uses Three.js, a powerful 3D graphics library that makes creating 3D worlds much easier:
@@ -197,7 +220,7 @@ function animate() {
 ## 🔧 Customization Ideas
 
 ### Easy Changes - Modify the CONFIG Object
-All game settings are in the CONFIG object at the top of `script.js`:
+All game settings are in the CONFIG object in `modules/config.js`:
 ```javascript
 const CONFIG = {
     player: {
@@ -226,7 +249,7 @@ const CONFIG = {
 ```
 
 ### Adding More Objects
-Find the `createInitialObjects()` function in script.js and add more objects:
+Import the object creation functions from their modules and use them:
 ```javascript
 // Add a new tree at position (x: 50, z: 50)
 createTree(50, 50);
