@@ -9,10 +9,10 @@
 import { CONFIG } from './config.js';
 import { 
   setScene, setCamera, setRenderer, setClock, setRaycaster,
-  scene, camera, renderer, clock, worldState, worldObjects, animals
+  scene, camera, renderer, clock, worldState, worldObjects, worldAnimals
 } from './gameState.js';
 import { createWorld, createLighting } from './world.js';
-import { createInitialObjects } from './objects.js';
+import { createInitialWorldObjects } from './worldObjects.js';
 import { createInitialAnimals, updateAnimals } from './animals.js';
 import { createUIElements } from './ui.js';
 import { updatePlayer } from './player.js';
@@ -67,7 +67,7 @@ function init() {
     // Setup world
     createWorld();
     createLighting();
-    createInitialObjects();
+    createInitialWorldObjects(scene);
     createInitialAnimals();
     
     // Setup controls

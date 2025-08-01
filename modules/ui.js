@@ -3,7 +3,7 @@
  */
 
 import { CONFIG } from './config.js';
-import { uiElements, selectedObjectType } from './gameState.js';
+import { uiElements, selectedObjectType, worldState, buildableTypes, interiorBuildableTypes } from './gameState.js';
 
 /**
  * Create all UI elements for the game
@@ -74,8 +74,21 @@ function createObjectSelector() {
     border-radius: 5px;
   `;
   
-  // Create selector items
-  const items = [
+  document.body.appendChild(selector);
+  uiElements.selector = selector;
+  
+  // Update the selector content based on location
+  updateSelectorContent();
+}
+
+/**
+ * Update the selector content based on whether we're inside or outside
+ */
+export function updateSelectorContent() {
+  if (!uiElements.selector) return;
+  
+  // Different items for interior vs exterior
+  const exteriorItems = [
     { icon: '✊', label: 'Fists', key: '0' },
     { icon: '🌳', label: 'Tree', key: '1' },
     { icon: '🪨', label: 'Rock', key: '2' },
@@ -85,12 +98,25 @@ function createObjectSelector() {
     { icon: '🐴', label: 'Horse', key: '6' }
   ];
   
-  selector.innerHTML = items.map((item, index) => `
+  const interiorItems = [
+    { icon: '✊', label: 'Fists', key: '0' },
+    { icon: '🪑', label: 'Chair', key: '1' },
+    { icon: '🔲', label: 'Table', key: '2' },
+    { icon: '🛋️', label: 'Couch', key: '3' },
+    { icon: '📺', label: 'TV', key: '4' },
+    { icon: '🛏️', label: 'Bed', key: '5' },
+    { icon: '🐱', label: 'Cat', key: '6' },
+    { icon: '🐕', label: 'Dog', key: '7' }
+  ];
+  
+  const items = worldState.isInside ? interiorItems : exteriorItems;
+  
+  uiElements.selector.innerHTML = items.map((item, index) => `
     <div class="selector-item" data-type="${index}" style="
       width: ${CONFIG.ui.selectorItemSize}px;
       height: ${CONFIG.ui.selectorItemSize}px;
       background: #333;
-      border: 2px solid ${index === 0 ? '#ff0' : '#666'};
+      border: 2px solid ${index === selectedObjectType ? '#ff0' : '#666'};
       display: flex;
       align-items: center;
       justify-content: center;
@@ -102,9 +128,6 @@ function createObjectSelector() {
       <div>${item.icon}<br>${item.label}<br>[${item.key}]</div>
     </div>
   `).join('');
-  
-  document.body.appendChild(selector);
-  uiElements.selector = selector;
 }
 
 /**
@@ -125,14 +148,6 @@ function updateInstructions() {
  * Update the object selector UI to show current selection
  */
 export function updateObjectSelector() {
-  if (!uiElements.selector) return;
-  
-  const items = uiElements.selector.querySelectorAll('.selector-item');
-  items.forEach((item, index) => {
-    if (index === selectedObjectType) {
-      item.style.border = '2px solid #ff0';
-    } else {
-      item.style.border = '2px solid #666';
-    }
-  });
+  // Just update the content which will handle the selection highlight
+  updateSelectorContent();
 }

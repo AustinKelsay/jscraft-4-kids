@@ -8,86 +8,107 @@ JSCraft 3D is an educational Three.js-based first-person exploration game for ki
 
 ## Development Commands
 
-- **Run the game**: Open `index.html` in a web browser
-- **No build process**: This is a pure HTML/CSS/JS project with no package.json or build tools
+- **Run the game**: Open `index.html` in a web browser (no server required)
+- **No build process**: Pure HTML/CSS/JS project - `bundle.js` is the pre-bundled version of the modules
+- **No package.json**: No npm dependencies or build scripts
 - **No linting/testing**: Educational project focused on simplicity
 
 ## High-Level Architecture
 
-### Core Files
-- `index.html`: Entry point with Three.js CDN link (r128)
-- `script.js`: Main game logic (1900+ lines) with modular organization
-- `style.css`: Responsive styling with mobile support
+### Project Structure
 
-### Game Systems Architecture
+The game has two deployment modes:
+1. **Direct browser mode**: Uses `bundle.js` (pre-bundled) loaded from `index.html`
+2. **Development mode**: ES6 modules in the `modules/` directory for better code organization
 
-1. **Three.js Scene Graph**:
-   - Scene → Camera + Renderer + Objects
-   - Hierarchical object groups (interactableObjects)
-   - Named objects for debugging and management
+### Module Organization
 
-2. **Player Controller**:
-   - Separated yaw/pitch camera rotation to prevent gimbal lock
-   - Physics-based movement with gravity and jumping
-   - Boundary clamping within world limits
+All game logic is split into focused modules:
+- `main.js`: Entry point, initialization, and game loop
+- `config.js`: Central configuration object (CONFIG) with all game settings
+- `gameState.js`: Global state management (scene, camera, renderer, separated object arrays)
+- `world.js`: World creation, terrain, skybox, and environment
+- `objects.js`: Static objects (trees, rocks, houses) creation
+- `animals.js`: Animal entities with autonomous movement (outdoor: cow, pig, horse; indoor: cat, dog)
+- `interior.js`: Interior world system for entering/exiting houses with furniture
+- `input.js`: Keyboard/mouse event handling and Pointer Lock API
+- `camera.js`: Camera rotation and look controls
+- `player.js`: Player physics, movement, and collision detection
+- `building.js`: Context-aware object placement/removal system with raycasting
+- `ui.js`: Dynamic UI elements (crosshair, compass, context-sensitive object selector)
+- `dayNight.js`: Sun/moon movement and lighting transitions
+- `utils.js`: Helper functions (object disposal, random generation)
 
-3. **Input System**:
-   - Keyboard state tracking (keys object)
-   - Pointer Lock API for immersive mouse controls
-   - Event-driven architecture with proper cleanup
+### Core Technical Architecture
 
-4. **Building System**:
-   - Raycasting for object targeting
-   - Ghost preview objects with transparency
-   - Dynamic object creation/removal with proper disposal
+1. **Three.js Scene Management**:
+   - Single Scene with conditional content based on `worldState` (outside/inside)
+   - PerspectiveCamera with separated yaw/pitch controls
+   - WebGLRenderer with shadow mapping (PCFSoftShadowMap)
+   - Raycaster for object interaction and building
 
-5. **Rendering Pipeline**:
-   - Shadow mapping (PCFSoftShadowMap)
-   - Distance fog for performance
-   - Pixel ratio optimization for high DPI displays
-   - 60 FPS animation loop with delta timing
+2. **Object Management**:
+   - Separated arrays for different object types:
+     - `worldObjects`: Outdoor static objects (trees, rocks, houses)
+     - `interiorObjects`: Indoor furniture (chairs, tables, couches, TVs, beds)
+     - `worldAnimals`: Outdoor animals (cows, pigs, horses) with wandering AI
+     - `interiorAnimals`: Indoor animals (cats, dogs) with constrained movement
+   - `interactableObjects` group for raycast targeting
+   - `buildableTypes` and `interiorBuildableTypes` for context-sensitive building
+   - Named objects with userData for type identification and behavior
 
-6. **Animal System**:
-   - Autonomous movement with wander behavior
-   - Smooth path following with curved trajectories
-   - Individual animal properties (speed, wander radius)
-   - Idle and walking animations
-   - Boundary avoidance with soft edges
-   - Clean, simplified animal designs using basic geometries
-   - Three animal types: Cow, Pig, Horse
+3. **State Management**:
+   - `worldState`: 'outside' or 'inside' for world transitions
+   - `insideHouse`: Reference to the house being entered
+   - `keys`: Keyboard state tracking
+   - `player`: Physics state (velocity, canJump, height)
+   - `cameraController`: Yaw/pitch rotation state
 
-7. **Interior World System**:
-   - Interactive doors on houses (green highlight on hover)
-   - Click door to enter/exit houses
-   - Fixed-size interior rooms with furniture
-   - Separate world state management for inside/outside
-   - Interior lighting with point lights
-   - Movement boundaries adjusted for interior spaces
-   - Building/removing disabled when inside
+4. **Rendering Pipeline**:
+   - 60 FPS target with requestAnimationFrame
+   - Delta time calculations for framerate-independent movement
+   - Distance fog for performance optimization
+   - Dynamic shadows following sun/moon position
 
-### Key Technical Patterns
+### Key Implementation Patterns
 
-- **Configuration-Driven**: All gameplay values in CONFIG object
-- **Memory Management**: disposeObject() for Three.js cleanup, separate animals array
-- **Error Boundaries**: Try-catch in critical initialization
-- **Vector Math**: Three.js Vector3 for all 3D calculations
-- **Event Cleanup**: Proper listener removal on window unload
-- **Object Pooling**: Separate arrays for static objects and moving animals
+- **Configuration-Driven Design**: All values in CONFIG object for easy tweaking
+- **Memory Management**: `disposeObject()` properly cleans up Three.js resources
+- **Event-Based Input**: Clean event listener setup/teardown
+- **Modular Boundaries**: Each module exports specific functions, maintains encapsulation
+- **Performance Optimization**: Separate arrays for static vs. moving objects
+- **World Transitions**: Scene clearing and rebuilding for interior/exterior switches
+- **Context-Aware Systems**: UI and building mechanics adapt based on location
+- **Variable Distance Placement**: Camera pitch affects object placement distance
 
-### Code Organization
+### Interior System Architecture
 
-The script.js file follows a clear section structure:
-1. Configuration (CONFIG object with interior settings)
-2. Game State (global variables including worldState)
-3. Initialization
-4. World Creation
-5. Object Creation (including animals)
-6. Interior World System (createInterior, furniture functions)
-7. Input Handling (door click handling)
-8. Helper Functions
-9. Camera Controls
-10. Game Logic (includes animal movement)
-11. Building System
-12. UI Elements
-13. Animation Loop
-14. Cleanup
+The interior system uses a state-based approach:
+1. Door interaction via raycasting (green highlight on hover)
+2. Click triggers world state change to 'inside'
+3. Scene is cleared except persistent elements
+4. Interior room is generated with randomly placed furniture
+5. Movement boundaries adjusted for interior space
+6. UI automatically switches to interior-appropriate items
+7. Building system adapts to interior context (furniture and pets)
+8. Exit door returns player to original position outside
+
+### Animal System Design
+
+Animals use autonomous behavior patterns:
+- **Outdoor Animals** (cows, pigs, horses):
+  - Large wander radius within world boundaries
+  - Variable movement speeds and idle times
+  - Complex geometric construction with detailed features
+  - Smooth rotation and curved path movement
+- **Indoor Animals** (cats, dogs):
+  - Constrained movement within room boundaries
+  - Smaller wander radius appropriate for interior spaces
+  - Detailed models with ears, tails, and distinct colors
+  - Same sophisticated AI as outdoor animals but scaled for indoors
+- All animals feature:
+  - Random target selection with wait times
+  - Smooth path interpolation with drift for natural movement
+  - Individual properties (speed, wander radius, idle time)
+  - Simple leg animations during movement
+  - Boundary detection preventing wall clipping

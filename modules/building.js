@@ -4,12 +4,14 @@
 
 import { CONFIG } from './config.js';
 import { 
-  scene, camera, raycaster, worldState, worldObjects, animals,
+  scene, camera, raycaster, worldState, worldObjects, interiorObjects, worldAnimals, interiorAnimals,
   interactableObjects, highlightedObject, setHighlightedObject,
-  ghostObject, setGhostObject, selectedObjectType, buildableTypes
+  ghostObject, setGhostObject, selectedObjectType, buildableTypes, interiorBuildableTypes
 } from './gameState.js';
-import { createTree, createRock, createHouse } from './objects.js';
-import { createCow, createPig, createHorse } from './animals.js';
+import { createTree, createRock, createHouse } from './worldObjects.js';
+import { createCow, createPig, createHorse } from './worldAnimals.js';
+import { createCat, createDog } from './interiorAnimals.js';
+import { createChair, createTable, createCouch, createTV, createBed } from './interiorObjects.js';
 import { getForwardVector } from './camera.js';
 import { disposeObject, findParentObject } from './utils.js';
 
@@ -17,35 +19,62 @@ import { disposeObject, findParentObject } from './utils.js';
  * Build an object at the current build position
  */
 export function buildObject() {
-  // Don't build when inside
-  if (worldState.isInside) return;
-  
-  const type = buildableTypes[selectedObjectType];
+  // Get the appropriate buildable types based on location
+  const currentBuildableTypes = worldState.isInside ? interiorBuildableTypes : buildableTypes;
+  const type = currentBuildableTypes[selectedObjectType];
   
   // Don't build if fists are selected
   if (type === 'fists') return;
   
   const buildPos = getBuildPosition();
   if (buildPos) {
-    switch (type) {
-      case 'tree':
-        createTree(buildPos.x, buildPos.z);
-        break;
-      case 'rock':
-        createRock(buildPos.x, buildPos.z);
-        break;
-      case 'house':
-        createHouse(buildPos.x, buildPos.z);
-        break;
-      case 'cow':
-        createCow(buildPos.x, buildPos.z);
-        break;
-      case 'pig':
-        createPig(buildPos.x, buildPos.z);
-        break;
-      case 'horse':
-        createHorse(buildPos.x, buildPos.z);
-        break;
+    if (worldState.isInside) {
+      // Interior objects
+      switch (type) {
+        case 'chair':
+          createChair(buildPos.x, buildPos.z);
+          break;
+        case 'table':
+          createTable(buildPos.x, buildPos.z);
+          break;
+        case 'couch':
+          createCouch(buildPos.x, buildPos.z);
+          break;
+        case 'tv':
+          createTV(buildPos.x, buildPos.z);
+          break;
+        case 'bed':
+          createBed(buildPos.x, buildPos.z);
+          break;
+        case 'cat':
+          createCat(buildPos.x, buildPos.z);
+          break;
+        case 'dog':
+          createDog(buildPos.x, buildPos.z);
+          break;
+      }
+    } else {
+      // Exterior objects
+      switch (type) {
+        case 'tree':
+          createTree(buildPos.x, buildPos.z);
+          break;
+        case 'rock':
+          createRock(buildPos.x, buildPos.z);
+          break;
+        case 'house':
+          createHouse(buildPos.x, buildPos.z);
+          break;
+        case 'cow':
+          createCow(buildPos.x, buildPos.z);
+          break;
+        case 'pig':
+          createPig(buildPos.x, buildPos.z);
+          break;
+        case 'horse':
+          createHorse(buildPos.x, buildPos.z);
+          break;
+      }
     }
   }
 }
@@ -54,9 +83,6 @@ export function buildObject() {
  * Remove the currently highlighted object from the world
  */
 export function removeObject() {
-  // Don't remove objects when inside
-  if (worldState.isInside) return;
-  
   if (!highlightedObject || !highlightedObject.userData.removable) {
     return;
   }
@@ -65,17 +91,35 @@ export function removeObject() {
     // Remove from scene
     interactableObjects.remove(highlightedObject);
     
-    // Remove from world objects array
-    const index = worldObjects.indexOf(highlightedObject);
-    if (index > -1) {
-      worldObjects.splice(index, 1);
-    }
-    
-    // Remove from animals array if it's an animal
-    if (highlightedObject.userData.isAnimal) {
-      const animalIndex = animals.indexOf(highlightedObject);
-      if (animalIndex > -1) {
-        animals.splice(animalIndex, 1);
+    if (worldState.isInside) {
+      // Remove from interior objects array
+      const index = interiorObjects.indexOf(highlightedObject);
+      if (index > -1) {
+        interiorObjects.splice(index, 1);
+      }
+      
+      // Remove from interior animals if it's an animal
+      const animalTypes = ['cat', 'dog'];
+      if (animalTypes.includes(highlightedObject.userData.type)) {
+        const animalIndex = interiorAnimals.indexOf(highlightedObject);
+        if (animalIndex > -1) {
+          interiorAnimals.splice(animalIndex, 1);
+        }
+      }
+    } else {
+      // Remove from world objects array
+      const index = worldObjects.indexOf(highlightedObject);
+      if (index > -1) {
+        worldObjects.splice(index, 1);
+      }
+      
+      // Remove from world animals if it's an animal
+      const animalTypes = ['cow', 'pig', 'horse'];
+      if (animalTypes.includes(highlightedObject.userData.type)) {
+        const animalIndex = worldAnimals.indexOf(highlightedObject);
+        if (animalIndex > -1) {
+          worldAnimals.splice(animalIndex, 1);
+        }
       }
     }
     

@@ -20,6 +20,7 @@ const CONFIG = {
     size: 1000,               // Playable area size
     groundSize: 2000,         // Visual ground plane size
     gridDivisions: 50,        // Grid helper divisions
+    boundaryPadding: 20,      // Padding from world edge
     fogNear: 100,             // Fog start distance
     fogFar: 500               // Fog end distance
   },
@@ -94,6 +95,18 @@ const CONFIG = {
       size: 1.8,              // Reduced from 2.5
       moveSpeed: 5,
       wanderRadius: 20
+    },
+    cat: {
+      bodyColor: 0x808080,    // Gray
+      size: 0.4,              // Small size
+      moveSpeed: 2,
+      eyeColor: 0x32CD32      // Lime green eyes
+    },
+    dog: {
+      bodyColor: 0xD2691E,    // Chocolate brown
+      size: 0.8,              // Medium size
+      moveSpeed: 3,
+      earColor: 0x8B4513      // Darker brown ears
     }
   },
   
@@ -124,6 +137,7 @@ const CONFIG = {
     wallColor: 0xF5F5DC,      // Beige walls
     ceilingColor: 0xFFFFFF,   // White ceiling
     doorHighlightColor: 0x00FF00, // Green door highlight
+    boundaryPadding: 1,       // Padding from room walls
     furniture: {
       chair: {
         seatColor: 0x8B4513,  // Brown seat
@@ -217,6 +231,7 @@ const mouseControls = {
  */
 let selectedObjectType = 0;
 const buildableTypes = ['fists', 'tree', 'rock', 'house', 'cow', 'pig', 'horse'];
+const interiorBuildableTypes = ['fists', 'chair', 'table', 'couch', 'tv', 'bed', 'cat', 'dog'];
 let highlightedObject = null;
 let ghostObject = null;
 
@@ -1101,6 +1116,229 @@ function createHorse(x, z) {
   return horse;
 }
 
+/**
+ * Create a cat at the specified position
+ * @param {number} x - X coordinate
+ * @param {number} z - Z coordinate
+ * @returns {THREE.Group} The created cat object
+ */
+function createCat(x, z) {
+  const cat = new THREE.Group();
+  const size = CONFIG.objects.cat.size;
+  
+  // Body - elongated cylinder
+  const bodyGeometry = new THREE.CylinderGeometry(size * 0.3, size * 0.25, size * 1.2, 8);
+  const bodyMaterial = new THREE.MeshStandardMaterial({ 
+    color: CONFIG.objects.cat.bodyColor,
+    roughness: 0.8
+  });
+  const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+  body.position.y = size * 0.3;
+  body.rotation.z = Math.PI / 2;
+  body.castShadow = true;
+  body.receiveShadow = true;
+  cat.add(body);
+  
+  // Head - sphere
+  const headGeometry = new THREE.SphereGeometry(size * 0.35, 8, 8);
+  const head = new THREE.Mesh(headGeometry, bodyMaterial);
+  head.position.set(size * 0.5, size * 0.35, 0);
+  head.castShadow = true;
+  cat.add(head);
+  
+  // Ears - small cones
+  const earGeometry = new THREE.ConeGeometry(size * 0.15, size * 0.2, 4);
+  const ear1 = new THREE.Mesh(earGeometry, bodyMaterial);
+  ear1.position.set(size * 0.45, size * 0.6, size * 0.15);
+  cat.add(ear1);
+  
+  const ear2 = new THREE.Mesh(earGeometry, bodyMaterial);
+  ear2.position.set(size * 0.45, size * 0.6, -size * 0.15);
+  cat.add(ear2);
+  
+  // Eyes - glowing green
+  const eyeGeometry = new THREE.SphereGeometry(size * 0.05, 4, 4);
+  const eyeMaterial = new THREE.MeshStandardMaterial({ 
+    color: CONFIG.objects.cat.eyeColor,
+    emissive: CONFIG.objects.cat.eyeColor,
+    emissiveIntensity: 0.5
+  });
+  const eye1 = new THREE.Mesh(eyeGeometry, eyeMaterial);
+  eye1.position.set(size * 0.65, size * 0.4, size * 0.1);
+  cat.add(eye1);
+  
+  const eye2 = new THREE.Mesh(eyeGeometry, eyeMaterial);
+  eye2.position.set(size * 0.65, size * 0.4, -size * 0.1);
+  cat.add(eye2);
+  
+  // Tail - curved cylinder
+  const tailGeometry = new THREE.CylinderGeometry(size * 0.05, size * 0.08, size * 0.8, 4);
+  const tail = new THREE.Mesh(tailGeometry, bodyMaterial);
+  tail.position.set(-size * 0.5, size * 0.4, 0);
+  tail.rotation.z = -Math.PI / 4;
+  tail.castShadow = true;
+  cat.add(tail);
+  
+  // Legs - simple cylinders
+  const legGeometry = new THREE.CylinderGeometry(size * 0.05, size * 0.05, size * 0.3);
+  const legs = [];
+  const legPositions = [
+    { x: size * 0.3, z: size * 0.15 },
+    { x: size * 0.3, z: -size * 0.15 },
+    { x: -size * 0.3, z: size * 0.15 },
+    { x: -size * 0.3, z: -size * 0.15 }
+  ];
+  
+  legPositions.forEach(pos => {
+    const leg = new THREE.Mesh(legGeometry, bodyMaterial);
+    leg.position.set(pos.x, size * 0.15, pos.z);
+    leg.castShadow = true;
+    legs.push(leg);
+    cat.add(leg);
+  });
+  
+  cat.position.set(x, 0, z);
+  cat.userData = { 
+    type: 'cat', 
+    removable: true,
+    isAnimal: true,
+    legs: legs,
+    moveSpeed: CONFIG.objects.cat.moveSpeed || 2,
+    targetPosition: new THREE.Vector3(x, 0, z),
+    initialPosition: new THREE.Vector3(x, 0, z),
+    nextMoveTime: 0,
+    wanderRadius: 5
+  };
+  
+  interactableObjects.add(cat);
+  worldState.interiorObjects.push(cat);
+  
+  // Add to global animals array for movement updates
+  if (!window.interiorAnimals) {
+    window.interiorAnimals = [];
+  }
+  window.interiorAnimals.push(cat);
+  
+  return cat;
+}
+
+/**
+ * Create a dog at the specified position
+ * @param {number} x - X coordinate
+ * @param {number} z - Z coordinate
+ * @returns {THREE.Group} The created dog object
+ */
+function createDog(x, z) {
+  const dog = new THREE.Group();
+  const size = CONFIG.objects.dog.size;
+  
+  // Body - box
+  const bodyGeometry = new THREE.BoxGeometry(size * 1.2, size * 0.5, size * 0.4);
+  const bodyMaterial = new THREE.MeshStandardMaterial({ 
+    color: CONFIG.objects.dog.bodyColor,
+    roughness: 0.8
+  });
+  const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+  body.position.y = size * 0.4;
+  body.castShadow = true;
+  body.receiveShadow = true;
+  dog.add(body);
+  
+  // Head - box
+  const headGeometry = new THREE.BoxGeometry(size * 0.4, size * 0.35, size * 0.35);
+  const head = new THREE.Mesh(headGeometry, bodyMaterial);
+  head.position.set(size * 0.7, size * 0.45, 0);
+  head.castShadow = true;
+  dog.add(head);
+  
+  // Snout - smaller box
+  const snoutGeometry = new THREE.BoxGeometry(size * 0.2, size * 0.15, size * 0.2);
+  const snout = new THREE.Mesh(snoutGeometry, bodyMaterial);
+  snout.position.set(size * 0.85, size * 0.4, 0);
+  dog.add(snout);
+  
+  // Ears - floppy triangular shapes
+  const earGeometry = new THREE.BoxGeometry(size * 0.15, size * 0.3, size * 0.05);
+  const earMaterial = new THREE.MeshStandardMaterial({ 
+    color: CONFIG.objects.dog.earColor,
+    roughness: 0.9
+  });
+  const ear1 = new THREE.Mesh(earGeometry, earMaterial);
+  ear1.position.set(size * 0.65, size * 0.55, size * 0.15);
+  ear1.rotation.z = 0.3;
+  dog.add(ear1);
+  
+  const ear2 = new THREE.Mesh(earGeometry, earMaterial);
+  ear2.position.set(size * 0.65, size * 0.55, -size * 0.15);
+  ear2.rotation.z = 0.3;
+  dog.add(ear2);
+  
+  // Eyes - black spheres
+  const eyeGeometry = new THREE.SphereGeometry(size * 0.04, 4, 4);
+  const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+  const eye1 = new THREE.Mesh(eyeGeometry, eyeMaterial);
+  eye1.position.set(size * 0.75, size * 0.5, size * 0.08);
+  dog.add(eye1);
+  
+  const eye2 = new THREE.Mesh(eyeGeometry, eyeMaterial);
+  eye2.position.set(size * 0.75, size * 0.5, -size * 0.08);
+  dog.add(eye2);
+  
+  // Tail - wagging cylinder
+  const tailGeometry = new THREE.CylinderGeometry(size * 0.06, size * 0.04, size * 0.4, 4);
+  const tail = new THREE.Mesh(tailGeometry, bodyMaterial);
+  tail.position.set(-size * 0.5, size * 0.5, 0);
+  tail.rotation.z = Math.PI / 3;
+  tail.castShadow = true;
+  dog.add(tail);
+  
+  // Store tail reference for wagging animation
+  dog.userData.tail = tail;
+  
+  // Legs - cylinders
+  const legGeometry = new THREE.CylinderGeometry(size * 0.06, size * 0.06, size * 0.35);
+  const legs = [];
+  const legPositions = [
+    { x: size * 0.4, z: size * 0.15 },
+    { x: size * 0.4, z: -size * 0.15 },
+    { x: -size * 0.4, z: size * 0.15 },
+    { x: -size * 0.4, z: -size * 0.15 }
+  ];
+  
+  legPositions.forEach(pos => {
+    const leg = new THREE.Mesh(legGeometry, bodyMaterial);
+    leg.position.set(pos.x, size * 0.175, pos.z);
+    leg.castShadow = true;
+    legs.push(leg);
+    dog.add(leg);
+  });
+  
+  dog.position.set(x, 0, z);
+  dog.userData = { 
+    type: 'dog', 
+    removable: true,
+    isAnimal: true,
+    legs: legs,
+    moveSpeed: CONFIG.objects.dog.moveSpeed || 3,
+    targetPosition: new THREE.Vector3(x, 0, z),
+    initialPosition: new THREE.Vector3(x, 0, z),
+    nextMoveTime: 0,
+    wanderRadius: 6,
+    tail: tail
+  };
+  
+  interactableObjects.add(dog);
+  worldState.interiorObjects.push(dog);
+  
+  // Add to global animals array for movement updates
+  if (!window.interiorAnimals) {
+    window.interiorAnimals = [];
+  }
+  window.interiorAnimals.push(dog);
+  
+  return dog;
+}
+
 // ===================================================================
 // INTERIOR WORLD SYSTEM
 // ===================================================================
@@ -1113,6 +1351,11 @@ function createInterior(house) {
   // Create interior group
   worldState.interiorGroup = new THREE.Group();
   worldState.interiorGroup.name = 'interior';
+  
+  // Initialize interior animals array
+  if (!window.interiorAnimals) {
+    window.interiorAnimals = [];
+  }
   
   const roomSize = CONFIG.interior.roomSize;
   const height = CONFIG.interior.ceilingHeight;
@@ -1286,6 +1529,11 @@ function removeInterior() {
     scene.remove(worldState.interiorGroup);
     worldState.interiorGroup = null;
     worldState.interiorObjects = [];
+    
+    // Clear interior animals
+    if (window.interiorAnimals) {
+      window.interiorAnimals = [];
+    }
   }
 }
 
@@ -1666,7 +1914,11 @@ function onKeyDown(event) {
       updateObjectSelector();
       break;
     case 'Digit6':
-      selectedObjectType = 6; // Horse
+      selectedObjectType = 6; // Horse or Cat (inside)
+      updateObjectSelector();
+      break;
+    case 'Digit7':
+      selectedObjectType = 7; // Dog (inside only)
       updateObjectSelector();
       break;
   }
@@ -1761,10 +2013,11 @@ function enterHouse(house) {
   // Update world state
   worldState.isInside = true;
   
-  // Hide UI elements that aren't needed inside
-  if (uiElements.selector) {
-    uiElements.selector.style.display = 'none';
-  }
+  // Reset selected object type to fists
+  selectedObjectType = 0;
+  
+  // Update selector to show interior items
+  updateSelectorContent();
 }
 
 /**
@@ -1794,10 +2047,11 @@ function exitToOutside() {
   worldState.isInside = false;
   worldState.currentHouse = null;
   
-  // Show UI elements
-  if (uiElements.selector) {
-    uiElements.selector.style.display = 'flex';
-  }
+  // Reset selected object type to fists
+  selectedObjectType = 0;
+  
+  // Update selector to show exterior items
+  updateSelectorContent();
   
   // Reset any highlighted objects
   if (highlightedObject) {
@@ -2033,7 +2287,9 @@ function updateDayNightCycle() {
 function updateAnimals(delta) {
   const currentTime = clock.getElapsedTime();
   
-  animals.forEach(animal => {
+  // Update world animals when outside
+  if (!worldState.isInside && animals) {
+    animals.forEach(animal => {
     // Check if it's time to pick a new target
     if (currentTime > animal.userData.nextMoveTime) {
       // Pick a new random target within wander radius
@@ -2119,7 +2375,107 @@ function updateAnimals(delta) {
       animal.position.z = THREE.MathUtils.clamp(animal.position.z, -boundary, boundary);
       animal.userData.targetPosition.z = animal.position.z + (Math.random() - 0.5) * 20;
     }
-  });
+    });
+  }
+  
+  // Update interior animals when inside
+  if (worldState.isInside && window.interiorAnimals) {
+    window.interiorAnimals.forEach(animal => {
+      // Check if it's time to pick a new target
+      if (currentTime > animal.userData.nextMoveTime) {
+        // Pick a new random target within room
+        const roomSize = CONFIG.interior.roomSize;
+        const maxDistance = roomSize / 3; // Smaller wander radius for interior
+        const angle = Math.random() * Math.PI * 2;
+        const distance = Math.random() * maxDistance * 0.7 + maxDistance * 0.3;
+        
+        animal.userData.targetPosition.set(
+          Math.cos(angle) * distance,
+          0,
+          Math.sin(angle) * distance
+        );
+        
+        // Keep target within room bounds
+        const boundary = roomSize / 2 - 1;
+        animal.userData.targetPosition.x = THREE.MathUtils.clamp(animal.userData.targetPosition.x, -boundary, boundary);
+        animal.userData.targetPosition.z = THREE.MathUtils.clamp(animal.userData.targetPosition.z, -boundary, boundary);
+        
+        // Set next move time (shorter wait times for interior)
+        const waitTime = 1 + Math.random() * 3;
+        animal.userData.nextMoveTime = currentTime + waitTime;
+      }
+      
+      // Move towards target
+      const direction = new THREE.Vector3()
+        .subVectors(animal.userData.targetPosition, animal.position)
+        .normalize();
+      
+      const distanceToTarget = animal.position.distanceTo(animal.userData.targetPosition);
+      
+      if (distanceToTarget > 0.3) {
+        // Move the animal with slight curve for more natural movement
+        const moveDistance = animal.userData.moveSpeed * delta * 0.7; // Slightly slower indoors
+        
+        // Add slight perpendicular drift for curved paths
+        const drift = new THREE.Vector3(-direction.z, 0, direction.x);
+        drift.multiplyScalar(Math.sin(currentTime * 2) * 0.05);
+        
+        animal.position.add(direction.multiplyScalar(moveDistance));
+        animal.position.add(drift);
+        
+        // Smooth rotation towards direction
+        if (direction.length() > 0) {
+          const targetAngle = Math.atan2(direction.x, direction.z);
+          const angleDiff = targetAngle - animal.rotation.y;
+          const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+          animal.rotation.y += normalizedDiff * delta * 3;
+        }
+        
+        // Bobbing animation based on animal type and speed
+        const bobSpeed = 8 + animal.userData.moveSpeed;
+        const bobAmount = Math.sin(currentTime * bobSpeed) * 0.02;
+        animal.position.y = Math.abs(bobAmount) * animal.userData.moveSpeed / 4;
+        
+        // Subtle sway animation
+        animal.rotation.z = Math.sin(currentTime * bobSpeed * 0.7) * 0.01;
+        
+        // Cat-specific animations
+        if (animal.userData.type === 'cat') {
+          // Tail sway
+          const tail = animal.children.find(child => child.position.x < 0 && child.position.y > 0.3);
+          if (tail) {
+            tail.rotation.y = Math.sin(currentTime * 3) * 0.2;
+          }
+        }
+        
+        // Dog-specific animations
+        if (animal.userData.type === 'dog' && animal.userData.tail) {
+          // Tail wagging
+          animal.userData.tail.rotation.y = Math.sin(currentTime * 10) * 0.4;
+          animal.userData.tail.rotation.z = Math.PI / 3 + Math.sin(currentTime * 8) * 0.1;
+        }
+      } else {
+        // Idle animation when stopped
+        animal.position.y = Math.sin(currentTime * 2) * 0.005; // Gentle breathing
+        animal.rotation.z = 0;
+        
+        // Occasionally look around when idle
+        if (Math.random() < 0.02) {
+          animal.rotation.y += (Math.random() - 0.5) * 0.3;
+        }
+        
+        // Idle tail movement for dogs
+        if (animal.userData.type === 'dog' && animal.userData.tail) {
+          animal.userData.tail.rotation.y = Math.sin(currentTime * 2) * 0.1;
+        }
+      }
+      
+      // Keep animals within room bounds
+      const boundary = CONFIG.interior.roomSize / 2 - 0.5;
+      animal.position.x = THREE.MathUtils.clamp(animal.position.x, -boundary, boundary);
+      animal.position.z = THREE.MathUtils.clamp(animal.position.z, -boundary, boundary);
+    });
+  }
 }
 
 function updateObjectHighlight() {
@@ -2154,16 +2510,14 @@ function updateObjectHighlight() {
     
     // Otherwise check for removable objects
     const object = findParentObject(intersects[0].object);
-    if (object && object.userData.removable && distance < CONFIG.building.distance && !worldState.isInside) {
+    if (object && object.userData.removable && distance < CONFIG.building.distance) {
       highlightedObject = object;
       highlightObject(object);
     }
   }
   
-  // Update ghost object for building preview (only outside)
-  if (!worldState.isInside) {
-    updateGhostObject();
-  }
+  // Update ghost object for building preview
+  updateGhostObject();
 }
 
 function findParentObject(mesh) {
@@ -2225,8 +2579,11 @@ function updateGhostObject() {
     ghostObject = null;
   }
   
+  // Get the appropriate buildable types based on location
+  const currentBuildableTypes = worldState.isInside ? interiorBuildableTypes : buildableTypes;
+  const type = currentBuildableTypes[selectedObjectType];
+  
   // Don't create ghost for fists
-  const type = buildableTypes[selectedObjectType];
   if (type === 'fists') return;
   
   // Create new ghost for building preview
@@ -2327,6 +2684,105 @@ function updateGhostObject() {
         horseGhost.position.y = 0.9;
         ghostGroup.add(horseGhost);
         break;
+        
+      // Interior object ghosts
+      case 'chair':
+        const chairGhost = new THREE.Mesh(
+          new THREE.BoxGeometry(0.5, 1, 0.5),
+          new THREE.MeshBasicMaterial({ 
+            color: 0x8B4513, 
+            transparent: true, 
+            opacity: CONFIG.building.ghostOpacity,
+            depthWrite: false
+          })
+        );
+        chairGhost.position.y = 0.5;
+        ghostGroup.add(chairGhost);
+        break;
+        
+      case 'table':
+        const tableGhost = new THREE.Mesh(
+          new THREE.BoxGeometry(1.5, 0.8, 1),
+          new THREE.MeshBasicMaterial({ 
+            color: 0x654321, 
+            transparent: true, 
+            opacity: CONFIG.building.ghostOpacity,
+            depthWrite: false
+          })
+        );
+        tableGhost.position.y = 0.4;
+        ghostGroup.add(tableGhost);
+        break;
+        
+      case 'couch':
+        const couchGhost = new THREE.Mesh(
+          new THREE.BoxGeometry(2, 0.8, 0.8),
+          new THREE.MeshBasicMaterial({ 
+            color: 0x4169E1, 
+            transparent: true, 
+            opacity: CONFIG.building.ghostOpacity,
+            depthWrite: false
+          })
+        );
+        couchGhost.position.y = 0.4;
+        ghostGroup.add(couchGhost);
+        break;
+        
+      case 'tv':
+        const tvGhost = new THREE.Mesh(
+          new THREE.BoxGeometry(1.2, 0.8, 0.1),
+          new THREE.MeshBasicMaterial({ 
+            color: 0x000000, 
+            transparent: true, 
+            opacity: CONFIG.building.ghostOpacity,
+            depthWrite: false
+          })
+        );
+        tvGhost.position.y = 0.4;
+        ghostGroup.add(tvGhost);
+        break;
+        
+      case 'bed':
+        const bedGhost = new THREE.Mesh(
+          new THREE.BoxGeometry(2, 0.6, 1.5),
+          new THREE.MeshBasicMaterial({ 
+            color: 0x8B7355, 
+            transparent: true, 
+            opacity: CONFIG.building.ghostOpacity,
+            depthWrite: false
+          })
+        );
+        bedGhost.position.y = 0.3;
+        ghostGroup.add(bedGhost);
+        break;
+        
+      case 'cat':
+        const catGhost = new THREE.Mesh(
+          new THREE.BoxGeometry(0.5, 0.3, 0.3),
+          new THREE.MeshBasicMaterial({ 
+            color: 0x808080, 
+            transparent: true, 
+            opacity: CONFIG.building.ghostOpacity,
+            depthWrite: false
+          })
+        );
+        catGhost.position.y = 0.15;
+        ghostGroup.add(catGhost);
+        break;
+        
+      case 'dog':
+        const dogGhost = new THREE.Mesh(
+          new THREE.BoxGeometry(0.8, 0.4, 0.3),
+          new THREE.MeshBasicMaterial({ 
+            color: 0xD2691E, 
+            transparent: true, 
+            opacity: CONFIG.building.ghostOpacity,
+            depthWrite: false
+          })
+        );
+        dogGhost.position.y = 0.2;
+        ghostGroup.add(dogGhost);
+        break;
     }
     
     ghostObject = ghostGroup;
@@ -2336,11 +2792,43 @@ function updateGhostObject() {
 }
 
 function getBuildPosition() {
-  // Get forward direction for building placement
-  const forward = getForwardVector();
+  // Cast a ray from the camera to find where to place the object
+  const rayDirection = new THREE.Vector3();
+  camera.getWorldDirection(rayDirection);
+  
+  // Check if we're looking more at the floor or ahead
+  const isLookingDown = rayDirection.y < -0.3;
+  
+  if (isLookingDown || worldState.isInside) {
+    // Cast ray to find floor intersection
+    const rayOrigin = camera.position.clone();
+    const ray = new THREE.Raycaster(rayOrigin, rayDirection);
+    
+    // Create a temporary floor plane at y=0
+    const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const intersection = new THREE.Vector3();
+    
+    if (ray.ray.intersectPlane(floorPlane, intersection)) {
+      // Clamp the distance to reasonable bounds
+      const distance = camera.position.distanceTo(intersection);
+      const maxDistance = worldState.isInside ? CONFIG.interior.roomSize / 2 : CONFIG.building.distance * 2;
+      const minDistance = 2;
+      
+      if (distance > minDistance && distance < maxDistance) {
+        return intersection;
+      }
+    }
+  }
+  
+  // Default behavior - place at fixed distance in front
+  const forward = new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  forward.y = 0; // Keep it horizontal
+  forward.normalize();
   
   const buildPos = camera.position.clone();
-  buildPos.add(forward.multiplyScalar(CONFIG.building.distance));
+  const distance = worldState.isInside ? 4 : CONFIG.building.distance;
+  buildPos.add(forward.multiplyScalar(distance));
   buildPos.y = 0;
   
   return buildPos;
@@ -2351,35 +2839,74 @@ function getBuildPosition() {
 // ===================================================================
 
 function buildObject() {
-  // Don't build when inside
-  if (worldState.isInside) return;
-  
-  const type = buildableTypes[selectedObjectType];
+  // Get the appropriate buildable types based on location
+  const currentBuildableTypes = worldState.isInside ? interiorBuildableTypes : buildableTypes;
+  const type = currentBuildableTypes[selectedObjectType];
   
   // Don't build if fists are selected
   if (type === 'fists') return;
   
   const buildPos = getBuildPosition();
   if (buildPos) {
-    switch (type) {
-      case 'tree':
-        createTree(buildPos.x, buildPos.z);
-        break;
-      case 'rock':
-        createRock(buildPos.x, buildPos.z);
-        break;
-      case 'house':
-        createHouse(buildPos.x, buildPos.z);
-        break;
-      case 'cow':
-        createCow(buildPos.x, buildPos.z);
-        break;
-      case 'pig':
-        createPig(buildPos.x, buildPos.z);
-        break;
-      case 'horse':
-        createHorse(buildPos.x, buildPos.z);
-        break;
+    if (worldState.isInside) {
+      // Interior objects
+      switch (type) {
+        case 'chair':
+          const chair = createChair();
+          chair.position.set(buildPos.x, 0, buildPos.z);
+          worldState.interiorGroup.add(chair);
+          break;
+        case 'table':
+          const table = createTable();
+          table.position.set(buildPos.x, 0, buildPos.z);
+          worldState.interiorGroup.add(table);
+          break;
+        case 'couch':
+          const couch = createCouch();
+          couch.position.set(buildPos.x, 0, buildPos.z);
+          worldState.interiorGroup.add(couch);
+          break;
+        case 'tv':
+          const tv = createTV();
+          tv.position.set(buildPos.x, 0, buildPos.z);
+          worldState.interiorGroup.add(tv);
+          break;
+        case 'bed':
+          const bed = createBed();
+          bed.position.set(buildPos.x, 0, buildPos.z);
+          worldState.interiorGroup.add(bed);
+          break;
+        case 'cat':
+          const cat = createCat(buildPos.x, buildPos.z);
+          worldState.interiorGroup.add(cat);
+          break;
+        case 'dog':
+          const dog = createDog(buildPos.x, buildPos.z);
+          worldState.interiorGroup.add(dog);
+          break;
+      }
+    } else {
+      // Exterior objects
+      switch (type) {
+        case 'tree':
+          createTree(buildPos.x, buildPos.z);
+          break;
+        case 'rock':
+          createRock(buildPos.x, buildPos.z);
+          break;
+        case 'house':
+          createHouse(buildPos.x, buildPos.z);
+          break;
+        case 'cow':
+          createCow(buildPos.x, buildPos.z);
+          break;
+        case 'pig':
+          createPig(buildPos.x, buildPos.z);
+          break;
+        case 'horse':
+          createHorse(buildPos.x, buildPos.z);
+          break;
+      }
     }
   }
 }
@@ -2389,9 +2916,6 @@ function buildObject() {
  * Properly disposes of Three.js resources and updates arrays
  */
 function removeObject() {
-  // Don't remove objects when inside
-  if (worldState.isInside) return;
-  
   if (!highlightedObject || !highlightedObject.userData.removable) {
     return;
   }
@@ -2400,17 +2924,30 @@ function removeObject() {
     // Remove from scene
     interactableObjects.remove(highlightedObject);
     
-    // Remove from world objects array
-    const index = worldObjects.indexOf(highlightedObject);
-    if (index > -1) {
-      worldObjects.splice(index, 1);
-    }
-    
-    // Remove from animals array if it's an animal
-    if (highlightedObject.userData.isAnimal) {
-      const animalIndex = animals.indexOf(highlightedObject);
-      if (animalIndex > -1) {
-        animals.splice(animalIndex, 1);
+    if (worldState.isInside) {
+      // Remove from interior objects array
+      const index = worldState.interiorObjects.indexOf(highlightedObject);
+      if (index > -1) {
+        worldState.interiorObjects.splice(index, 1);
+      }
+      
+      // Remove from parent group if it has one
+      if (highlightedObject.parent) {
+        highlightedObject.parent.remove(highlightedObject);
+      }
+    } else {
+      // Remove from world objects array
+      const index = worldObjects.indexOf(highlightedObject);
+      if (index > -1) {
+        worldObjects.splice(index, 1);
+      }
+      
+      // Remove from animals array if it's an animal
+      if (highlightedObject.userData.isAnimal) {
+        const animalIndex = animals.indexOf(highlightedObject);
+        if (animalIndex > -1) {
+          animals.splice(animalIndex, 1);
+        }
       }
     }
     
@@ -2498,8 +3035,21 @@ function createObjectSelector() {
     border-radius: 5px;
   `;
   
-  // Create selector items
-  const items = [
+  document.body.appendChild(selector);
+  uiElements.selector = selector;
+  
+  // Update the selector content based on location
+  updateSelectorContent();
+}
+
+/**
+ * Update the selector content based on whether we're inside or outside
+ */
+function updateSelectorContent() {
+  if (!uiElements.selector) return;
+  
+  // Different items for interior vs exterior
+  const exteriorItems = [
     { icon: '✊', label: 'Fists', key: '0' },
     { icon: '🌳', label: 'Tree', key: '1' },
     { icon: '🪨', label: 'Rock', key: '2' },
@@ -2509,12 +3059,25 @@ function createObjectSelector() {
     { icon: '🐴', label: 'Horse', key: '6' }
   ];
   
-  selector.innerHTML = items.map((item, index) => `
+  const interiorItems = [
+    { icon: '✊', label: 'Fists', key: '0' },
+    { icon: '🪑', label: 'Chair', key: '1' },
+    { icon: '🔲', label: 'Table', key: '2' },
+    { icon: '🛋️', label: 'Couch', key: '3' },
+    { icon: '📺', label: 'TV', key: '4' },
+    { icon: '🛏️', label: 'Bed', key: '5' },
+    { icon: '🐱', label: 'Cat', key: '6' },
+    { icon: '🐕', label: 'Dog', key: '7' }
+  ];
+  
+  const items = worldState.isInside ? interiorItems : exteriorItems;
+  
+  uiElements.selector.innerHTML = items.map((item, index) => `
     <div class="selector-item" data-type="${index}" style="
       width: ${CONFIG.ui.selectorItemSize}px;
       height: ${CONFIG.ui.selectorItemSize}px;
       background: #333;
-      border: 2px solid ${index === 0 ? '#ff0' : '#666'};
+      border: 2px solid ${index === selectedObjectType ? '#ff0' : '#666'};
       display: flex;
       align-items: center;
       justify-content: center;
@@ -2526,9 +3089,6 @@ function createObjectSelector() {
       <div>${item.icon}<br>${item.label}<br>[${item.key}]</div>
     </div>
   `).join('');
-  
-  document.body.appendChild(selector);
-  uiElements.selector = selector;
 }
 
 /**
@@ -2568,16 +3128,8 @@ function updateCompass(isDay, progress) {
  * Highlights the currently selected building object type
  */
 function updateObjectSelector() {
-  if (!uiElements.selector) return;
-  
-  const items = uiElements.selector.querySelectorAll('.selector-item');
-  items.forEach((item, index) => {
-    if (index === selectedObjectType) {
-      item.style.border = '2px solid #ff0';
-    } else {
-      item.style.border = '2px solid #666';
-    }
-  });
+  // Just update the content which will handle the selection highlight
+  updateSelectorContent();
 }
 
 // ===================================================================
@@ -2594,8 +3146,10 @@ function animate() {
   // Only update outside world systems when not inside
   if (!worldState.isInside) {
     updateDayNightCycle();
-    updateAnimals(delta);
   }
+  
+  // Update animals (both interior and exterior)
+  updateAnimals(delta);
   
   updateObjectHighlight();
   

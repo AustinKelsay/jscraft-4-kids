@@ -41,12 +41,15 @@ export const mouseControls = {
 // Building system state
 export let selectedObjectType = 0;
 export const buildableTypes = ['fists', 'tree', 'rock', 'house', 'cow', 'pig', 'horse'];
+export const interiorBuildableTypes = ['fists', 'chair', 'table', 'couch', 'tv', 'bed', 'cat', 'dog'];
 export let highlightedObject = null;
 export let ghostObject = null;
 
 // World object management
-export const worldObjects = [];
-export const animals = [];  // Track animals for movement updates
+export const worldObjects = [];     // Outdoor objects (trees, rocks, houses)
+export const interiorObjects = [];  // Indoor objects (furniture: tv, chairs, couches, etc.)
+export const worldAnimals = [];     // Outdoor animals (cows, pigs, horses)
+export const interiorAnimals = [];  // Indoor animals (cats, dogs)
 export let interactableObjects;
 
 // Interior world state management
@@ -55,7 +58,6 @@ export const worldState = {
   currentHouse: null,                 // Reference to the house player entered
   outsidePosition: new THREE.Vector3(), // Player position before entering
   outsideRotation: { yaw: 0, pitch: 0 }, // Camera rotation before entering
-  interiorObjects: [],                // Objects in the current interior
   interiorGroup: null                 // Group containing all interior objects
 };
 

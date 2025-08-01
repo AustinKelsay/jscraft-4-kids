@@ -9,7 +9,7 @@ import {
   moonMesh, sunLight, moonLight, ambientLight, uiElements, setSelectedObjectType
 } from './gameState.js';
 import { buildObject, removeObject, resetObjectHighlight } from './building.js';
-import { updateObjectSelector } from './ui.js';
+import { updateObjectSelector, updateSelectorContent } from './ui.js';
 import { applyCameraMovement, updateCameraRotation } from './camera.js';
 import { createInterior, removeInterior } from './interior.js';
 
@@ -212,10 +212,11 @@ function enterHouse(house) {
   // Update world state
   worldState.isInside = true;
   
-  // Hide UI elements that aren't needed inside
-  if (uiElements.selector) {
-    uiElements.selector.style.display = 'none';
-  }
+  // Reset selected object type to fists
+  setSelectedObjectType(0);
+  
+  // Update selector to show interior items
+  updateSelectorContent();
 }
 
 /**
@@ -246,10 +247,11 @@ function exitToOutside() {
   worldState.isInside = false;
   worldState.currentHouse = null;
   
-  // Show UI elements
-  if (uiElements.selector) {
-    uiElements.selector.style.display = 'flex';
-  }
+  // Reset selected object type to fists
+  setSelectedObjectType(0);
+  
+  // Update selector to show exterior items
+  updateSelectorContent();
   
   // Reset any highlighted objects
   if (highlightedObject) {

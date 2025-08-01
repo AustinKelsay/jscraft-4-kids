@@ -7,13 +7,13 @@ Welcome to your first JavaScript first-person exploration game! This template gi
 ### Option 1: Using Replit
 1. Go to [Replit.com](https://replit.com)
 2. Create a new HTML/CSS/JS project
-3. Upload all three files: `index.html`, `script.js`, and `style.css`
+3. Upload all three files: `index.html`, `bundle.js`, and `style.css`
 4. Click the "Run" button to see your game!
 
 ### Option 2: Using Your Computer
 1. Download or copy all three files:
    - `index.html` - The main HTML file
-   - `script.js` - The game logic
+   - `bundle.js` - The bundled game logic
    - `style.css` - The styling
 2. Save them in the same folder
 3. Double-click `index.html` to open it in your web browser
@@ -50,15 +50,21 @@ You can now enter houses to explore their interiors:
 - **Hover over a door**: The door will highlight in green when you're close enough
 - **Click the door**: Enter the house and explore the furnished interior
 - **Inside features**: Living room with couch and TV, dining area with table and chairs, bedroom with bed
+- **Interior building**: When inside, use the selector at the bottom to place furniture and pets
+- **Interior pets**: Cats and dogs that roam around inside houses
 - **Exit**: Click the interior door (also highlights green) to return outside to the same location
 
-Note: Building and removing objects is disabled while inside houses.
-
 ### Animals
-The game now features three types of animals that wander around the world:
+The game features two categories of animals:
+
+**Outdoor Animals** (wander around the world):
 - **🐄 Cows**: Brown with white spots, simplified box-based design with horns and udders - move slowly with a gentle sway
 - **🐷 Pigs**: Pink with distinctive snouts, clean box-based body design - move at medium speed with a waddle
 - **🐴 Horses**: Dark brown with black manes, elegant design with two-part legs - move quickly with grace
+
+**Indoor Animals** (found inside houses):
+- **🐱 Cats**: Gray with glowing green eyes, sleek design - move quietly around interiors
+- **🐕 Dogs**: Brown with floppy ears and wagging tails - friendly companions for indoor spaces
 
 Animals feature clean, recognizable shapes with simple geometry (boxes, cylinders, spheres), properly positioned features, and natural movement animations including walking, idle breathing, and occasional head turns. You can spawn new animals or remove existing ones just like other objects!
 
@@ -92,9 +98,9 @@ The game uses a modular architecture for development with a bundled version for 
   - **config.js**: All game configuration values
   - **gameState.js**: Global state management
   - **world.js**: World creation and environment
-  - **objects.js**: Trees, rocks, and houses creation
+  - **objects.js**: Outdoor objects creation (trees, rocks, houses)
   - **animals.js**: Animal creation and movement
-  - **interior.js**: Interior world system and furniture
+  - **interior.js**: Interior world system and furniture (chairs, tables, TVs, etc.)
   - **input.js**: Input handling and events
   - **camera.js**: Camera controls and movement
   - **player.js**: Player physics and movement

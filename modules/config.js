@@ -82,6 +82,18 @@ export const CONFIG = {
       size: 1.8,              // Reduced from 2.5
       moveSpeed: 5,
       wanderRadius: 20
+    },
+    cat: {
+      bodyColor: 0x808080,    // Gray
+      size: 0.4,              // Small size
+      moveSpeed: 2,
+      eyeColor: 0x32CD32      // Lime green eyes
+    },
+    dog: {
+      bodyColor: 0xD2691E,    // Chocolate brown
+      size: 0.8,              // Medium size
+      moveSpeed: 3,
+      earColor: 0x8B4513      // Darker brown ears
     }
   },
   
