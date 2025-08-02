@@ -5,13 +5,15 @@
 import { CONFIG } from './config.js';
 import { scene, worldState, interiorObjects, interiorAnimals } from './gameState.js';
 import { disposeObject } from './utils.js';
-import { createChair, createTable, createCouch, createTV, createBed, addFurnitureToInterior } from './interiorObjects.js';
+import { addFurnitureToInterior } from './interiorObjects.js';
+import { createCat, createDog } from './interiorAnimals.js';
 
 /**
  * Creates an interior room environment
  * @param {THREE.Object3D} house - The house object being entered
+ * @param {boolean} skipFurniture - Whether to skip adding default furniture
  */
-export function createInterior(house) {
+export function createInterior(house, skipFurniture = false) {
   // Create interior group
   worldState.interiorGroup = new THREE.Group();
   worldState.interiorGroup.name = 'interior';
@@ -111,18 +113,39 @@ export function createInterior(house) {
   interiorLight.shadow.mapSize.height = 1024;
   worldState.interiorGroup.add(interiorLight);
   
-  // Add furniture
-  addFurnitureToInterior(worldState.interiorGroup);
+  // Add furniture only if not loading saved interior
+  if (!skipFurniture) {
+    addFurnitureToInterior();
+    
+    // Add some interior animals
+    const roomSize = CONFIG.interior.roomSize;
+    createCat(-roomSize / 3, -roomSize / 4);
+    createDog(roomSize / 4, -roomSize / 4);
+  }
   
   // Add the interior to the scene
   scene.add(worldState.interiorGroup);
   
-  // Store interior objects for cleanup
-  worldState.interiorGroup.traverse(child => {
-    if (child.isMesh) {
-      interiorObjects.push(child);
-    }
-  });
+  // Only collect objects if we added default furniture (not when loading saved interior)
+  if (!skipFurniture) {
+    // Clear the arrays first to avoid duplicates
+    interiorObjects.length = 0;
+    interiorAnimals.length = 0;
+    
+    // Store interior objects for cleanup
+    worldState.interiorGroup.traverse(child => {
+      if (child.userData && child.userData.type) {
+        // Add furniture objects
+        if (['chair', 'table', 'couch', 'tv', 'bed'].includes(child.userData.type)) {
+          interiorObjects.push(child);
+        }
+        // Add animal objects
+        else if (['cat', 'dog'].includes(child.userData.type)) {
+          interiorAnimals.push(child);
+        }
+      }
+    });
+  }
 }
 
 

@@ -243,7 +243,8 @@ const worldState = {
   currentHouse: null,                 // Reference to the house player entered
   outsidePosition: new THREE.Vector3(), // Player position before entering
   outsideRotation: { yaw: 0, pitch: 0 }, // Camera rotation before entering
-  interiorGroup: null                 // Group containing all interior objects
+  interiorGroup: null,                // Group containing all interior objects
+  houseInteriors: new Map()           // Map of house UUID to interior data
 };
 
 // Lighting and environment
@@ -503,9 +504,16 @@ function createRock(x, z) {
  * Creates a house at the specified position
  * @param {number} x - X coordinate
  * @param {number} z - Z coordinate
+ * @param {string} uuid - Optional UUID to preserve during save/load (for interior persistence)
+ * @returns {THREE.Group} The created house object
  */
-function createHouse(x, z) {
+function createHouse(x, z, uuid = null) {
   const house = new THREE.Group();
+  
+  // Preserve UUID if provided (for save/load persistence)
+  if (uuid) {
+    house.uuid = uuid;
+  }
   
   // Base structure
   const houseGeometry = new THREE.BoxGeometry(6, 4, 6);
@@ -1065,13 +1073,13 @@ function createChair(x = 0, z = 0) {
   chair.position.set(x, 0, z);
   chair.userData = { type: 'chair', removable: true };
   
-  interiorObjects.push(chair);
-  
-  // Add to interior group if it exists, otherwise to interactable objects
+  // Add to scene/group but don't add to interiorObjects array yet
+  // The interior.js module will handle tracking after adding to the group
   if (worldState.interiorGroup) {
     worldState.interiorGroup.add(chair);
   } else {
     interactableObjects.add(chair);
+    interiorObjects.push(chair); // Only add to array if not in interior group
   }
   
   return chair;
@@ -1123,13 +1131,13 @@ function createTable(x = 0, z = 0) {
   table.position.set(x, 0, z);
   table.userData = { type: 'table', removable: true };
   
-  interiorObjects.push(table);
-  
-  // Add to interior group if it exists, otherwise to interactable objects
+  // Add to scene/group but don't add to interiorObjects array yet
+  // The interior.js module will handle tracking after adding to the group
   if (worldState.interiorGroup) {
     worldState.interiorGroup.add(table);
   } else {
     interactableObjects.add(table);
+    interiorObjects.push(table); // Only add to array if not in interior group
   }
   
   return table;
@@ -1196,13 +1204,13 @@ function createCouch(x = 0, z = 0) {
   couch.position.set(x, 0, z);
   couch.userData = { type: 'couch', removable: true };
   
-  interiorObjects.push(couch);
-  
-  // Add to interior group if it exists, otherwise to interactable objects
+  // Add to scene/group but don't add to interiorObjects array yet
+  // The interior.js module will handle tracking after adding to the group
   if (worldState.interiorGroup) {
     worldState.interiorGroup.add(couch);
   } else {
     interactableObjects.add(couch);
+    interiorObjects.push(couch); // Only add to array if not in interior group
   }
   
   return couch;
@@ -1262,13 +1270,13 @@ function createTV(x = 0, z = 0) {
   tv.position.set(x, 0, z);
   tv.userData = { type: 'tv', removable: true };
   
-  interiorObjects.push(tv);
-  
-  // Add to interior group if it exists, otherwise to interactable objects
+  // Add to scene/group but don't add to interiorObjects array yet
+  // The interior.js module will handle tracking after adding to the group
   if (worldState.interiorGroup) {
     worldState.interiorGroup.add(tv);
   } else {
     interactableObjects.add(tv);
+    interiorObjects.push(tv); // Only add to array if not in interior group
   }
   
   return tv;
@@ -1349,51 +1357,44 @@ function createBed(x = 0, z = 0) {
   bed.position.set(x, 0, z);
   bed.userData = { type: 'bed', removable: true };
   
-  interiorObjects.push(bed);
-  
-  // Add to interior group if it exists, otherwise to interactable objects
+  // Add to scene/group but don't add to interiorObjects array yet
+  // The interior.js module will handle tracking after adding to the group
   if (worldState.interiorGroup) {
     worldState.interiorGroup.add(bed);
   } else {
     interactableObjects.add(bed);
+    interiorObjects.push(bed); // Only add to array if not in interior group
   }
   
   return bed;
 }
 
 /**
- * Adds furniture to the interior room
- * @param {THREE.Group} interiorGroup - The interior group to add furniture to
+ * Adds default furniture to the interior room
  */
-function addFurnitureToInterior(interiorGroup) {
+function addFurnitureToInterior() {
   const roomSize = CONFIG.interior.roomSize;
   
   // Add some chairs
   const chair1 = createChair(-roomSize / 4, roomSize / 4);
   chair1.rotation.y = Math.PI / 4;
-  interiorGroup.add(chair1);
   
   const chair2 = createChair(roomSize / 4, roomSize / 4);
   chair2.rotation.y = -Math.PI / 4;
-  interiorGroup.add(chair2);
   
   // Add a table
-  const table = createTable(0, roomSize / 4);
-  interiorGroup.add(table);
+  createTable(0, roomSize / 4);
   
   // Add a couch
   const couch = createCouch(0, -roomSize / 3);
   couch.rotation.y = Math.PI;
-  interiorGroup.add(couch);
   
   // Add a TV
-  const tv = createTV(0, -roomSize / 2 + 1);
-  interiorGroup.add(tv);
+  createTV(0, -roomSize / 2 + 1);
   
   // Add a bed
   const bed = createBed(roomSize / 3, 0);
   bed.rotation.y = Math.PI / 2;
-  interiorGroup.add(bed);
 }
 
 
@@ -1498,13 +1499,13 @@ function createCat(x, z) {
     wanderRadius: 5
   };
   
-  interiorAnimals.push(cat);
-  
-  // Add to interior group if it exists, otherwise to interactable objects
+  // Add to scene/group but don't add to interiorAnimals array yet
+  // The interior.js module will handle tracking after adding to the group
   if (worldState.interiorGroup) {
     worldState.interiorGroup.add(cat);
   } else {
     interactableObjects.add(cat);
+    interiorAnimals.push(cat); // Only add to array if not in interior group
   }
   
   return cat;
@@ -1618,13 +1619,13 @@ function createDog(x, z) {
     tail: tail
   };
   
-  interiorAnimals.push(dog);
-  
-  // Add to interior group if it exists, otherwise to interactable objects
+  // Add to scene/group but don't add to interiorAnimals array yet
+  // The interior.js module will handle tracking after adding to the group
   if (worldState.interiorGroup) {
     worldState.interiorGroup.add(dog);
   } else {
     interactableObjects.add(dog);
+    interiorAnimals.push(dog); // Only add to array if not in interior group
   }
   
   return dog;
@@ -1766,8 +1767,9 @@ function createLighting() {
 /**
  * Creates an interior room environment
  * @param {THREE.Object3D} house - The house object being entered
+ * @param {boolean} skipFurniture - Whether to skip adding default furniture
  */
-function createInterior(house) {
+function createInterior(house, skipFurniture = false) {
   // Create interior group
   worldState.interiorGroup = new THREE.Group();
   worldState.interiorGroup.name = 'interior';
@@ -1867,18 +1869,39 @@ function createInterior(house) {
   interiorLight.shadow.mapSize.height = 1024;
   worldState.interiorGroup.add(interiorLight);
   
-  // Add furniture
-  addFurnitureToInterior(worldState.interiorGroup);
+  // Add furniture only if not loading saved interior
+  if (!skipFurniture) {
+    addFurnitureToInterior();
+    
+    // Add some interior animals
+    const roomSize = CONFIG.interior.roomSize;
+    createCat(-roomSize / 3, -roomSize / 4);
+    createDog(roomSize / 4, -roomSize / 4);
+  }
   
   // Add the interior to the scene
   scene.add(worldState.interiorGroup);
   
-  // Store interior objects for cleanup
-  worldState.interiorGroup.traverse(child => {
-    if (child.isMesh) {
-      interiorObjects.push(child);
-    }
-  });
+  // Only collect objects if we added default furniture (not when loading saved interior)
+  if (!skipFurniture) {
+    // Clear the arrays first to avoid duplicates
+    interiorObjects.length = 0;
+    interiorAnimals.length = 0;
+    
+    // Store interior objects for cleanup
+    worldState.interiorGroup.traverse(child => {
+      if (child.userData && child.userData.type) {
+        // Add furniture objects
+        if (['chair', 'table', 'couch', 'tv', 'bed'].includes(child.userData.type)) {
+          interiorObjects.push(child);
+        }
+        // Add animal objects
+        else if (['cat', 'dog'].includes(child.userData.type)) {
+          interiorAnimals.push(child);
+        }
+      }
+    });
+  }
 }
 
 
@@ -2765,6 +2788,7 @@ function createUIElements() {
   createCrosshair();
   createCompass();
   createObjectSelector();
+  createSaveLoadPanel();
   updateInstructions();
   updateObjectSelector();
 }
@@ -2905,6 +2929,492 @@ function updateObjectSelector() {
   updateSelectorContent();
 }
 
+/**
+ * Create save/load panel
+ */
+function createSaveLoadPanel() {
+  const panel = document.createElement('div');
+  panel.id = 'saveLoadPanel';
+  panel.style.cssText = `
+    position: absolute;
+    top: ${CONFIG.ui.compassSize + 100}px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    border-radius: 5px;
+    color: white;
+    font-family: Arial;
+    font-size: 14px;
+  `;
+  
+  panel.innerHTML = `
+    <div style="margin-bottom: 10px; font-weight: bold;">💾 Save/Load</div>
+    <button id="saveButton" style="
+      margin: 5px;
+      padding: 5px 10px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    ">Save Game [F5]</button>
+    <button id="loadButton" style="
+      margin: 5px;
+      padding: 5px 10px;
+      background: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    ">Load Game [F9]</button>
+    <div id="saveStatus" style="margin-top: 10px; font-size: 12px;"></div>
+  `;
+  
+  document.body.appendChild(panel);
+  uiElements.saveLoadPanel = panel;
+}
+
+/**
+ * Update save status message
+ * @param {string} message - Status message to display
+ * @param {string} color - Text color (default: white)
+ */
+function updateSaveStatus(message, color = 'white') {
+  const statusElement = document.getElementById('saveStatus');
+  if (statusElement) {
+    statusElement.textContent = message;
+    statusElement.style.color = color;
+    
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      statusElement.textContent = '';
+    }, 3000);
+  }
+}
+
+
+// ===== Module: saveLoad.js =====
+/**
+ * Save/Load System
+ * Handles saving and loading game state to localStorage
+ */
+
+
+const SAVE_KEY = 'jscraft_save';
+const SAVE_VERSION = '1.0';
+
+/**
+ * Save the current game state
+ * @returns {boolean} Success status
+ */
+function saveGameState() {
+  try {
+    // Always save current interior if inside a house
+    if (worldState.isInside && worldState.currentHouse) {
+      saveCurrentInterior();
+    }
+    
+    // Convert house interiors Map to serializable format
+    const houseInteriorsData = {};
+    worldState.houseInteriors.forEach((interiorData, houseUuid) => {
+      houseInteriorsData[houseUuid] = interiorData;
+    });
+    
+    // Prepare save data
+    
+    const saveData = {
+      version: SAVE_VERSION,
+      timestamp: Date.now(),
+      timeOfDay: clock.getElapsedTime(), // Save the current time
+      player: {
+        position: {
+          x: camera.position.x,
+          y: camera.position.y,
+          z: camera.position.z
+        },
+        rotation: {
+          yaw: cameraController.yaw,
+          pitch: cameraController.pitch
+        },
+        selectedObjectType: selectedObjectType,
+        ghostRotation: ghostRotation
+      },
+      worldState: {
+        isInside: worldState.isInside,
+        currentHouseUuid: worldState.currentHouse ? worldState.currentHouse.uuid : null,
+        outsidePosition: worldState.outsidePosition.toArray(),
+        outsideRotation: worldState.outsideRotation
+      },
+      worldObjects: worldObjects.map(obj => ({
+        type: obj.userData.type,
+        position: obj.position.toArray(),
+        rotation: obj.rotation.y,
+        uuid: obj.uuid
+      })),
+      worldAnimals: worldAnimals.map(animal => ({
+        type: animal.userData.type,
+        position: animal.position.toArray(),
+        rotation: animal.rotation.y
+      })),
+      houseInteriors: houseInteriorsData
+    };
+    
+    localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+    return true;
+  } catch (error) {
+    console.error('Failed to save game:', error);
+    return false;
+  }
+}
+
+/**
+ * Load a saved game state
+ * @returns {boolean} Success status
+ */
+function loadGameState() {
+  try {
+    const savedData = localStorage.getItem(SAVE_KEY);
+    if (!savedData) {
+      console.log('No save data found');
+      return false;
+    }
+    
+    let saveData;
+    try {
+      saveData = JSON.parse(savedData);
+    } catch (parseError) {
+      console.error('Failed to parse save data:', parseError);
+      return false;
+    }
+    
+    // Validate save data structure
+    if (!saveData || typeof saveData !== 'object') {
+      console.error('Invalid save data structure');
+      return false;
+    }
+    
+    // Check version compatibility
+    if (saveData.version !== SAVE_VERSION) {
+      // Version mismatch but continue loading
+    }
+    
+    // Clear existing objects (except initial terrain)
+    clearWorldObjects();
+    
+    // Restore player position and rotation
+    camera.position.set(
+      saveData.player.position.x,
+      saveData.player.position.y,
+      saveData.player.position.z
+    );
+    cameraController.yaw = saveData.player.rotation.yaw;
+    cameraController.pitch = saveData.player.rotation.pitch;
+    updateCameraRotation();
+    
+    // Restore selected object and ghost rotation
+    selectedObjectType = saveData.player.selectedObjectType || 0;
+    ghostRotation = saveData.player.ghostRotation || 0;
+    
+    // Restore time of day
+    if (saveData.timeOfDay !== undefined) {
+      clock.elapsedTime = saveData.timeOfDay;
+      clock.oldTime = performance.now() / 1000 - saveData.timeOfDay;
+    }
+    
+    // Restore world objects
+    saveData.worldObjects.forEach(objData => {
+      let newObj = null;
+      const [x, y, z] = objData.position;
+      
+      switch (objData.type) {
+        case 'tree':
+          newObj = createTree(x, z);
+          break;
+        case 'rock':
+          newObj = createRock(x, z);
+          break;
+        case 'house':
+          // Pass the UUID to preserve it for interior mapping
+          newObj = createHouse(x, z, objData.uuid);
+          break;
+      }
+      
+      if (newObj) {
+        newObj.rotation.y = objData.rotation;
+      }
+    });
+    
+    // Restore world animals
+    saveData.worldAnimals.forEach(animalData => {
+      let newAnimal = null;
+      const [x, y, z] = animalData.position;
+      
+      switch (animalData.type) {
+        case 'cow':
+          newAnimal = createCow(x, z);
+          break;
+        case 'pig':
+          newAnimal = createPig(x, z);
+          break;
+        case 'horse':
+          newAnimal = createHorse(x, z);
+          break;
+      }
+      
+      if (newAnimal) {
+        newAnimal.rotation.y = animalData.rotation;
+      }
+    });
+    
+    // Restore house interiors data
+    if (saveData.houseInteriors && typeof saveData.houseInteriors === 'object') {
+      worldState.houseInteriors.clear();
+      Object.entries(saveData.houseInteriors).forEach(([houseUuid, interiorData]) => {
+        // Validate interior data structure
+        if (interiorData && 
+            Array.isArray(interiorData.objects) && 
+            Array.isArray(interiorData.animals)) {
+          worldState.houseInteriors.set(houseUuid, interiorData);
+        }
+      });
+      // House interiors restored
+    }
+    
+    // If player was inside a house, restore that interior
+    if (saveData.worldState.isInside && saveData.worldState.currentHouseUuid) {
+      const house = worldObjects.find(obj => obj.uuid === saveData.worldState.currentHouseUuid);
+      if (house) {
+        // Set world state
+        worldState.currentHouse = house;
+        worldState.isInside = true;
+        worldState.outsidePosition.fromArray(saveData.worldState.outsidePosition);
+        worldState.outsideRotation = saveData.worldState.outsideRotation;
+        
+        // Hide outside world objects
+        if (interactableObjects) interactableObjects.visible = false;
+        if (skyMesh) skyMesh.visible = false;
+        if (sunMesh) sunMesh.visible = false;
+        if (moonMesh) moonMesh.visible = false;
+        if (sunLight) sunLight.visible = false;
+        if (moonLight) moonLight.visible = false;
+        if (ambientLight) ambientLight.intensity = 0.5;
+        
+        // Create interior with saved data
+        createInterior(house, true); // Skip default furniture
+        loadHouseInterior(house.uuid);
+        
+        // Update UI for interior mode
+        updateSelectorContent();
+      }
+    } else {
+      // Reset world state if not inside
+      worldState.isInside = false;
+      worldState.currentHouse = null;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to load game:', error);
+    return false;
+  }
+}
+
+/**
+ * Clear all world objects (used before loading)
+ */
+function clearWorldObjects() {
+  // Clear world objects
+  [...worldObjects].forEach(obj => {
+    if (obj.parent) obj.parent.remove(obj);
+    disposeObject(obj);
+  });
+  worldObjects.length = 0;
+  
+  // Clear world animals
+  [...worldAnimals].forEach(animal => {
+    if (animal.parent) animal.parent.remove(animal);
+    disposeObject(animal);
+  });
+  worldAnimals.length = 0;
+  
+  // Clear interior objects if inside
+  if (worldState.isInside) {
+    [...interiorObjects].forEach(obj => {
+      if (obj.parent) obj.parent.remove(obj);
+      disposeObject(obj);
+    });
+    interiorObjects.length = 0;
+    
+    [...interiorAnimals].forEach(animal => {
+      if (animal.parent) animal.parent.remove(animal);
+      disposeObject(animal);
+    });
+    interiorAnimals.length = 0;
+  }
+}
+
+/**
+ * Check if a save exists
+ * @returns {boolean} True if save exists
+ */
+function hasSaveData() {
+  return localStorage.getItem(SAVE_KEY) !== null;
+}
+
+/**
+ * Get save data info without loading
+ * @returns {Object|null} Save info or null
+ */
+function getSaveInfo() {
+  try {
+    const savedData = localStorage.getItem(SAVE_KEY);
+    if (!savedData) return null;
+    
+    const saveData = JSON.parse(savedData);
+    return {
+      timestamp: new Date(saveData.timestamp),
+      objectCount: saveData.worldObjects.length,
+      animalCount: saveData.worldAnimals.length
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Delete save data
+ */
+function deleteSaveData() {
+  localStorage.removeItem(SAVE_KEY);
+  console.log('Save data deleted');
+}
+
+/**
+ * Save the current interior to the house interiors map
+ * Traverses the interior group to collect all furniture and pets
+ * Only saves if player is currently inside a house
+ */
+function saveCurrentInterior() {
+  if (!worldState.currentHouse || !worldState.isInside) {
+    return;
+  }
+  
+  const houseUuid = worldState.currentHouse.uuid;
+  
+  // Collect all interior objects from the interior group
+  const objectsToSave = [];
+  const animalsToSave = [];
+  
+  if (worldState.interiorGroup) {
+    worldState.interiorGroup.traverse(child => {
+      if (child.userData && child.userData.type) {
+        const saveData = {
+          type: child.userData.type,
+          position: child.position.toArray(),
+          rotation: child.rotation.y || 0
+        };
+        
+        if (['chair', 'table', 'couch', 'tv', 'bed'].includes(child.userData.type)) {
+          objectsToSave.push(saveData);
+        } else if (['cat', 'dog'].includes(child.userData.type)) {
+          animalsToSave.push(saveData);
+        }
+      }
+    });
+  }
+  
+  const interiorData = {
+    objects: objectsToSave,
+    animals: animalsToSave,
+    timestamp: Date.now()
+  };
+  
+  worldState.houseInteriors.set(houseUuid, interiorData);
+}
+
+/**
+ * Load a specific house's interior from saved data
+ * Recreates all furniture and pets in their saved positions
+ * @param {string} houseUuid - UUID of the house to load interior for
+ * @returns {boolean} True if interior was loaded successfully, false otherwise
+ */
+function loadHouseInterior(houseUuid) {
+  const interiorData = worldState.houseInteriors.get(houseUuid);
+  
+  if (!interiorData || !worldState.interiorGroup) {
+    return false;
+  }
+  
+  // Clear arrays to track new objects
+  interiorObjects.length = 0;
+  interiorAnimals.length = 0;
+  
+  // Restore interior objects
+  interiorData.objects.forEach(objData => {
+    let newObj = null;
+    const [x, y, z] = objData.position;
+    
+    switch (objData.type) {
+      case 'chair':
+        newObj = createChair(x, y, z);
+        break;
+      case 'table':
+        newObj = createTable(x, y, z);
+        break;
+      case 'couch':
+        newObj = createCouch(x, y, z);
+        break;
+      case 'tv':
+        newObj = createTV(x, y, z);
+        break;
+      case 'bed':
+        newObj = createBed(x, y, z);
+        break;
+    }
+    
+    if (newObj) {
+      newObj.rotation.y = objData.rotation || 0;
+      // Always add to interior group when loading interior
+      if (worldState.interiorGroup) {
+        worldState.interiorGroup.add(newObj);
+      }
+      // Track in the array
+      if (!interiorObjects.includes(newObj)) {
+        interiorObjects.push(newObj);
+      }
+    }
+  });
+  
+  // Restore interior animals
+  interiorData.animals.forEach(animalData => {
+    let newAnimal = null;
+    const [x, , z] = animalData.position;
+    
+    switch (animalData.type) {
+      case 'cat':
+        newAnimal = createCat(x, z);
+        break;
+      case 'dog':
+        newAnimal = createDog(x, z);
+        break;
+    }
+    
+    if (newAnimal) {
+      newAnimal.rotation.y = animalData.rotation || 0;
+      // Always add to interior group when loading interior
+      if (worldState.interiorGroup) {
+        worldState.interiorGroup.add(newAnimal);
+      }
+      // Track in the array
+      if (!interiorAnimals.includes(newAnimal)) {
+        interiorAnimals.push(newAnimal);
+      }
+    }
+  });
+  
+  return true;
+}
+
 
 // ===== Module: input.js =====
 /**
@@ -2924,6 +3434,18 @@ function setupEventListeners() {
   document.addEventListener('mousemove', onMouseMove);
   document.addEventListener('click', onClick);
   document.addEventListener('pointerlockchange', onPointerLockChange);
+  
+  // Save/Load button handlers
+  const saveButton = document.getElementById('saveButton');
+  const loadButton = document.getElementById('loadButton');
+  
+  if (saveButton) {
+    saveButton.addEventListener('click', handleSave);
+  }
+  
+  if (loadButton) {
+    loadButton.addEventListener('click', handleLoad);
+  }
 }
 
 /**
@@ -3012,6 +3534,14 @@ function onKeyDown(event) {
     case 'Digit7':
       setSelectedObjectType(7); // Dog (when inside)
       updateObjectSelector();
+      break;
+    case 'F5':
+      event.preventDefault(); // Prevent browser refresh
+      handleSave();
+      break;
+    case 'F9':
+      event.preventDefault();
+      handleLoad();
       break;
   }
 }
@@ -3111,8 +3641,16 @@ function enterHouse(house) {
   // Adjust ambient light for interior
   ambientLight.intensity = 0.5;
   
-  // Create interior world
-  createInterior(house);
+  // Check if we have saved interior data for this house
+  const hasSavedInterior = worldState.houseInteriors.has(house.uuid);
+  
+  // Create interior world (skip default furniture if we have saved data)
+  createInterior(house, hasSavedInterior);
+  
+  // Load saved interior if it exists
+  if (hasSavedInterior) {
+    loadHouseInterior(house.uuid);
+  }
   
   // Position player inside near the door
   camera.position.set(0, CONFIG.player.height, CONFIG.interior.roomSize / 2 - 2);
@@ -3134,6 +3672,11 @@ function enterHouse(house) {
  * Transitions from house interior back to outside world
  */
 function exitToOutside() {
+  // Save current interior before exiting
+  if (worldState.currentHouse) {
+    saveCurrentInterior();
+  }
+  
   // Remove interior
   removeInterior();
   
@@ -3177,6 +3720,38 @@ function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+/**
+ * Handle save game
+ */
+function handleSave() {
+  const success = saveGameState();
+  if (success) {
+    updateSaveStatus('✅ Game saved successfully!', 'lightgreen');
+  } else {
+    updateSaveStatus('❌ Failed to save game', 'red');
+  }
+}
+
+/**
+ * Handle load game
+ */
+function handleLoad() {
+  if (!hasSaveData()) {
+    updateSaveStatus('⚠️ No save data found', 'orange');
+    return;
+  }
+  
+  const success = loadGameState();
+  if (success) {
+    updateSaveStatus('✅ Game loaded successfully!', 'lightgreen');
+    // Update UI to reflect loaded state
+    updateObjectSelector();
+    updateSelectorContent();
+  } else {
+    updateSaveStatus('❌ Failed to load game', 'red');
+  }
 }
 
 /**

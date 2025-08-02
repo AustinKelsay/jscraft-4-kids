@@ -102,9 +102,16 @@ export function createRock(x, z) {
  * Creates a house at the specified position
  * @param {number} x - X coordinate
  * @param {number} z - Z coordinate
+ * @param {string} uuid - Optional UUID to preserve during save/load (for interior persistence)
+ * @returns {THREE.Group} The created house object
  */
-export function createHouse(x, z) {
+export function createHouse(x, z, uuid = null) {
   const house = new THREE.Group();
+  
+  // Preserve UUID if provided (for save/load persistence)
+  if (uuid) {
+    house.uuid = uuid;
+  }
   
   // Base structure
   const houseGeometry = new THREE.BoxGeometry(6, 4, 6);

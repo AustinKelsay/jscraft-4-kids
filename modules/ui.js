@@ -12,6 +12,7 @@ export function createUIElements() {
   createCrosshair();
   createCompass();
   createObjectSelector();
+  createSaveLoadPanel();
   updateInstructions();
   updateObjectSelector();
 }
@@ -150,4 +151,67 @@ function updateInstructions() {
 export function updateObjectSelector() {
   // Just update the content which will handle the selection highlight
   updateSelectorContent();
+}
+
+/**
+ * Create save/load panel
+ */
+function createSaveLoadPanel() {
+  const panel = document.createElement('div');
+  panel.id = 'saveLoadPanel';
+  panel.style.cssText = `
+    position: absolute;
+    top: ${CONFIG.ui.compassSize + 100}px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    border-radius: 5px;
+    color: white;
+    font-family: Arial;
+    font-size: 14px;
+  `;
+  
+  panel.innerHTML = `
+    <div style="margin-bottom: 10px; font-weight: bold;">💾 Save/Load</div>
+    <button id="saveButton" style="
+      margin: 5px;
+      padding: 5px 10px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    ">Save Game [F5]</button>
+    <button id="loadButton" style="
+      margin: 5px;
+      padding: 5px 10px;
+      background: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    ">Load Game [F9]</button>
+    <div id="saveStatus" style="margin-top: 10px; font-size: 12px;"></div>
+  `;
+  
+  document.body.appendChild(panel);
+  uiElements.saveLoadPanel = panel;
+}
+
+/**
+ * Update save status message
+ * @param {string} message - Status message to display
+ * @param {string} color - Text color (default: white)
+ */
+export function updateSaveStatus(message, color = 'white') {
+  const statusElement = document.getElementById('saveStatus');
+  if (statusElement) {
+    statusElement.textContent = message;
+    statusElement.style.color = color;
+    
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      statusElement.textContent = '';
+    }, 3000);
+  }
 }

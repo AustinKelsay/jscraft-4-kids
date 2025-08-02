@@ -61,13 +61,13 @@ export function createChair(x = 0, z = 0) {
   chair.position.set(x, 0, z);
   chair.userData = { type: 'chair', removable: true };
   
-  interiorObjects.push(chair);
-  
-  // Add to interior group if it exists, otherwise to interactable objects
+  // Add to scene/group but don't add to interiorObjects array yet
+  // The interior.js module will handle tracking after adding to the group
   if (worldState.interiorGroup) {
     worldState.interiorGroup.add(chair);
   } else {
     interactableObjects.add(chair);
+    interiorObjects.push(chair); // Only add to array if not in interior group
   }
   
   return chair;
@@ -119,13 +119,13 @@ export function createTable(x = 0, z = 0) {
   table.position.set(x, 0, z);
   table.userData = { type: 'table', removable: true };
   
-  interiorObjects.push(table);
-  
-  // Add to interior group if it exists, otherwise to interactable objects
+  // Add to scene/group but don't add to interiorObjects array yet
+  // The interior.js module will handle tracking after adding to the group
   if (worldState.interiorGroup) {
     worldState.interiorGroup.add(table);
   } else {
     interactableObjects.add(table);
+    interiorObjects.push(table); // Only add to array if not in interior group
   }
   
   return table;
@@ -192,13 +192,13 @@ export function createCouch(x = 0, z = 0) {
   couch.position.set(x, 0, z);
   couch.userData = { type: 'couch', removable: true };
   
-  interiorObjects.push(couch);
-  
-  // Add to interior group if it exists, otherwise to interactable objects
+  // Add to scene/group but don't add to interiorObjects array yet
+  // The interior.js module will handle tracking after adding to the group
   if (worldState.interiorGroup) {
     worldState.interiorGroup.add(couch);
   } else {
     interactableObjects.add(couch);
+    interiorObjects.push(couch); // Only add to array if not in interior group
   }
   
   return couch;
@@ -258,13 +258,13 @@ export function createTV(x = 0, z = 0) {
   tv.position.set(x, 0, z);
   tv.userData = { type: 'tv', removable: true };
   
-  interiorObjects.push(tv);
-  
-  // Add to interior group if it exists, otherwise to interactable objects
+  // Add to scene/group but don't add to interiorObjects array yet
+  // The interior.js module will handle tracking after adding to the group
   if (worldState.interiorGroup) {
     worldState.interiorGroup.add(tv);
   } else {
     interactableObjects.add(tv);
+    interiorObjects.push(tv); // Only add to array if not in interior group
   }
   
   return tv;
@@ -345,49 +345,42 @@ export function createBed(x = 0, z = 0) {
   bed.position.set(x, 0, z);
   bed.userData = { type: 'bed', removable: true };
   
-  interiorObjects.push(bed);
-  
-  // Add to interior group if it exists, otherwise to interactable objects
+  // Add to scene/group but don't add to interiorObjects array yet
+  // The interior.js module will handle tracking after adding to the group
   if (worldState.interiorGroup) {
     worldState.interiorGroup.add(bed);
   } else {
     interactableObjects.add(bed);
+    interiorObjects.push(bed); // Only add to array if not in interior group
   }
   
   return bed;
 }
 
 /**
- * Adds furniture to the interior room
- * @param {THREE.Group} interiorGroup - The interior group to add furniture to
+ * Adds default furniture to the interior room
  */
-export function addFurnitureToInterior(interiorGroup) {
+export function addFurnitureToInterior() {
   const roomSize = CONFIG.interior.roomSize;
   
   // Add some chairs
   const chair1 = createChair(-roomSize / 4, roomSize / 4);
   chair1.rotation.y = Math.PI / 4;
-  interiorGroup.add(chair1);
   
   const chair2 = createChair(roomSize / 4, roomSize / 4);
   chair2.rotation.y = -Math.PI / 4;
-  interiorGroup.add(chair2);
   
   // Add a table
-  const table = createTable(0, roomSize / 4);
-  interiorGroup.add(table);
+  createTable(0, roomSize / 4);
   
   // Add a couch
   const couch = createCouch(0, -roomSize / 3);
   couch.rotation.y = Math.PI;
-  interiorGroup.add(couch);
   
   // Add a TV
-  const tv = createTV(0, -roomSize / 2 + 1);
-  interiorGroup.add(tv);
+  createTV(0, -roomSize / 2 + 1);
   
   // Add a bed
   const bed = createBed(roomSize / 3, 0);
   bed.rotation.y = Math.PI / 2;
-  interiorGroup.add(bed);
 }

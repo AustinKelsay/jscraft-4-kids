@@ -61,7 +61,8 @@ export const worldState = {
   currentHouse: null,                 // Reference to the house player entered
   outsidePosition: new THREE.Vector3(), // Player position before entering
   outsideRotation: { yaw: 0, pitch: 0 }, // Camera rotation before entering
-  interiorGroup: null                 // Group containing all interior objects
+  interiorGroup: null,                // Group containing all interior objects
+  houseInteriors: new Map()           // Map of house UUID to interior data
 };
 
 // Lighting and environment

@@ -10,7 +10,8 @@ import {
   selectedObjectType, ghostRotation, setGhostRotation
 } from './gameState.js';
 import { buildObject, removeObject, resetObjectHighlight } from './building.js';
-import { updateObjectSelector, updateSelectorContent } from './ui.js';
+import { updateObjectSelector, updateSelectorContent, updateSaveStatus } from './ui.js';
+import { saveGameState, loadGameState, hasSaveData, saveCurrentInterior, loadHouseInterior } from './saveLoad.js';
 import { applyCameraMovement, updateCameraRotation } from './camera.js';
 import { createInterior, removeInterior } from './interior.js';
 
@@ -26,6 +27,18 @@ export function setupEventListeners() {
   document.addEventListener('mousemove', onMouseMove);
   document.addEventListener('click', onClick);
   document.addEventListener('pointerlockchange', onPointerLockChange);
+  
+  // Save/Load button handlers
+  const saveButton = document.getElementById('saveButton');
+  const loadButton = document.getElementById('loadButton');
+  
+  if (saveButton) {
+    saveButton.addEventListener('click', handleSave);
+  }
+  
+  if (loadButton) {
+    loadButton.addEventListener('click', handleLoad);
+  }
 }
 
 /**
@@ -114,6 +127,14 @@ function onKeyDown(event) {
     case 'Digit7':
       setSelectedObjectType(7); // Dog (when inside)
       updateObjectSelector();
+      break;
+    case 'F5':
+      event.preventDefault(); // Prevent browser refresh
+      handleSave();
+      break;
+    case 'F9':
+      event.preventDefault();
+      handleLoad();
       break;
   }
 }
@@ -213,8 +234,16 @@ function enterHouse(house) {
   // Adjust ambient light for interior
   ambientLight.intensity = 0.5;
   
-  // Create interior world
-  createInterior(house);
+  // Check if we have saved interior data for this house
+  const hasSavedInterior = worldState.houseInteriors.has(house.uuid);
+  
+  // Create interior world (skip default furniture if we have saved data)
+  createInterior(house, hasSavedInterior);
+  
+  // Load saved interior if it exists
+  if (hasSavedInterior) {
+    loadHouseInterior(house.uuid);
+  }
   
   // Position player inside near the door
   camera.position.set(0, CONFIG.player.height, CONFIG.interior.roomSize / 2 - 2);
@@ -236,6 +265,11 @@ function enterHouse(house) {
  * Transitions from house interior back to outside world
  */
 function exitToOutside() {
+  // Save current interior before exiting
+  if (worldState.currentHouse) {
+    saveCurrentInterior();
+  }
+  
   // Remove interior
   removeInterior();
   
@@ -279,6 +313,38 @@ export function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+/**
+ * Handle save game
+ */
+function handleSave() {
+  const success = saveGameState();
+  if (success) {
+    updateSaveStatus('✅ Game saved successfully!', 'lightgreen');
+  } else {
+    updateSaveStatus('❌ Failed to save game', 'red');
+  }
+}
+
+/**
+ * Handle load game
+ */
+function handleLoad() {
+  if (!hasSaveData()) {
+    updateSaveStatus('⚠️ No save data found', 'orange');
+    return;
+  }
+  
+  const success = loadGameState();
+  if (success) {
+    updateSaveStatus('✅ Game loaded successfully!', 'lightgreen');
+    // Update UI to reflect loaded state
+    updateObjectSelector();
+    updateSelectorContent();
+  } else {
+    updateSaveStatus('❌ Failed to load game', 'red');
+  }
 }
 
 /**

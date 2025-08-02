@@ -26,6 +26,7 @@ modules=(
     "player.js"
     "dayNight.js"
     "ui.js"
+    "saveLoad.js"
     "input.js"
     "animals.js"
     "main.js"

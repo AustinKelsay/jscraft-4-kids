@@ -101,13 +101,13 @@ export function createCat(x, z) {
     wanderRadius: 5
   };
   
-  interiorAnimals.push(cat);
-  
-  // Add to interior group if it exists, otherwise to interactable objects
+  // Add to scene/group but don't add to interiorAnimals array yet
+  // The interior.js module will handle tracking after adding to the group
   if (worldState.interiorGroup) {
     worldState.interiorGroup.add(cat);
   } else {
     interactableObjects.add(cat);
+    interiorAnimals.push(cat); // Only add to array if not in interior group
   }
   
   return cat;
@@ -221,13 +221,13 @@ export function createDog(x, z) {
     tail: tail
   };
   
-  interiorAnimals.push(dog);
-  
-  // Add to interior group if it exists, otherwise to interactable objects
+  // Add to scene/group but don't add to interiorAnimals array yet
+  // The interior.js module will handle tracking after adding to the group
   if (worldState.interiorGroup) {
     worldState.interiorGroup.add(dog);
   } else {
     interactableObjects.add(dog);
+    interiorAnimals.push(dog); // Only add to array if not in interior group
   }
   
   return dog;

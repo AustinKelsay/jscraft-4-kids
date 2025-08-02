@@ -42,6 +42,13 @@ Welcome to your first JavaScript first-person exploration game! This template gi
 - **Building Preview**: See a white ghost outline of objects before placing them with directional indicators
 - **Smart Distance**: Objects place closer when looking down, farther when looking up
 
+### Save/Load Controls
+- **F5**: Quick save your world (or click the Save Game button)
+- **F9**: Quick load your saved world (or click the Load Game button)
+- **Automatic Save**: Your world is saved to browser localStorage
+- **Save Data**: Includes all objects, animals, player position, and camera rotation
+- **Persistent Worlds**: Your saved world will be available when you return to the game
+
 ### UI Elements
 - **White crosshair** in the center shows where you're looking
 - **Compass** in the top-left shows your direction and time of day
@@ -204,6 +211,9 @@ function animate() {
   - Full ghost preview support for furniture and pets
   - Context-aware building controls
 - **Interior Pets**: Cats and dogs that roam inside houses
+- **Save/Load System**: Save your world progress and reload it anytime
+  - Saves all placed objects, animals, and player state
+  - Persistent across browser sessions using localStorage
 
 ## 🎯 Fun Challenges to Try
 
@@ -223,7 +233,7 @@ function animate() {
 4. **Weather Effects**: Add rain, snow, or fog that affects visibility
 5. **Animated Objects**: Make trees sway or add moving clouds
 6. **Build Limits**: Add resource management for building objects
-7. **Save/Load**: Save your world creations to local storage
+7. **Multiple Save Slots**: Extend the save system to support multiple save files
 8. **Animal Sounds**: Add moo, oink, and neigh sounds when near animals
 9. **Animal Reactions**: Make animals run away when you get too close
 10. **Feeding System**: Let players feed animals to make them follow you
