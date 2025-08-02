@@ -28,16 +28,19 @@ Welcome to your first JavaScript first-person exploration game! This template gi
 - **A/Left Arrow**: Strafe left (sidestep left)
 - **S/Down Arrow**: Walk backward
 - **D/Right Arrow**: Strafe right (sidestep right)
-- **Q**: Turn your view left (when not using mouse)
-- **E**: Turn your view right (when not using mouse)
 - **ESC**: Release mouse control
 
 ### Building Controls
 - **SPACE**: Jump when moving, or remove the object you're looking at (yellow highlight)
-- **B**: Build a new object in front of you
+- **B**: Build a new object in front of you (distance varies based on where you're looking)
+- **Q**: Rotate object left when building (45° increments) or turn camera left (when using fists)
+- **E**: Rotate object right when building (45° increments) or turn camera right (when using fists)
 - **0**: Select fists (remove mode)
-- **1-3**: Select object type to build (tree, rock, house)
-- **4-6**: Select animal type to spawn (cow, pig, horse)
+- **1-3**: Select object type to build (tree, rock, house) when outside
+- **4-6**: Select animal type to spawn (cow, pig, horse) when outside
+- **1-7**: Select furniture and pets when inside houses
+- **Building Preview**: See a white ghost outline of objects before placing them with directional indicators
+- **Smart Distance**: Objects place closer when looking down, farther when looking up
 
 ### UI Elements
 - **White crosshair** in the center shows where you're looking
@@ -50,7 +53,7 @@ You can now enter houses to explore their interiors:
 - **Hover over a door**: The door will highlight in green when you're close enough
 - **Click the door**: Enter the house and explore the furnished interior
 - **Inside features**: Living room with couch and TV, dining area with table and chairs, bedroom with bed
-- **Interior building**: When inside, use the selector at the bottom to place furniture and pets
+- **Interior building**: When inside, use numbers 1-7 to select furniture and pets, Q/E to rotate before placing
 - **Interior pets**: Cats and dogs that roam around inside houses
 - **Exit**: Click the interior door (also highlights green) to return outside to the same location
 
@@ -182,12 +185,25 @@ function animate() {
 
 ### Key Features
 - **Mouse Look**: Click to capture mouse for smooth camera control
-- **Building System**: Place and remove objects in the world
+- **Building System**: Place and remove objects in the world with rotation controls
+- **Ghost Preview**: See white outlines with directional indicators before placing objects
+  - Detailed previews show object orientation (doors on houses, chair backs, animal faces)
+  - Q/E keys rotate the ghost preview in 45° increments
+  - Optimized to only recreate when object type or rotation changes
+- **Smart Building Distance**: Objects place closer when looking down, farther when looking up
+  - Automatically adjusts for interior spaces
+  - Ensures objects stay within room boundaries
 - **Day/Night Cycle**: 2-minute days and 1-minute nights with moving sun/moon
 - **Dynamic Lighting**: Objects and sky change based on celestial positions
-- **Object Targeting**: Yellow highlight shows which object you can interact with
-- **Realistic Objects**: Trees with multiple foliage layers, procedurally deformed rocks, detailed houses with windows and doors
+- **Object Targeting**: Yellow highlight shows which object you can interact with, green for doors
+  - All house doors are interactive, including on pre-generated houses
+  - Improved door detection for reliable highlighting
+- **Realistic Objects**: Trees with random size variations, procedurally deformed rocks, detailed houses with interactive doors
 - **Living Animals**: Cows, pigs, and horses that wander around with simple animations
+- **Interior Worlds**: Fully furnished house interiors with separate building system
+  - Full ghost preview support for furniture and pets
+  - Context-aware building controls
+- **Interior Pets**: Cats and dogs that roam inside houses
 
 ## 🎯 Fun Challenges to Try
 
@@ -240,7 +256,7 @@ const CONFIG = {
     },
     objects: {
         tree: {
-            leavesColor: 0x228B22,  // Change tree color (hex format)
+            foliageColor: 0x228B22,  // Change tree color (hex format)
             minHeight: 4,           // Tree size variation
             maxHeight: 8
         },
@@ -279,6 +295,11 @@ Objects and animals are automatically added to the world with:
 - Collision detection ready (for future implementation)
 - Removable by looking at them and pressing SPACE
 - Animals have autonomous movement and animations
+
+The game starts with a pre-populated world containing:
+- Around 50 randomly placed objects (trees, rocks, and houses)
+- 8 animals wandering around (mix of cows, pigs, and horses)
+- Each tree has random size variations for a natural forest look
 
 ### Color Codes for Three.js
 Three.js uses hexadecimal color format (0x instead of #):
@@ -321,6 +342,16 @@ Three.js uses hexadecimal color format (0x instead of #):
 - Check the browser's developer console for errors (F12 key)
 - Make sure Three.js CDN link in index.html is working
 - Verify you're using a modern browser with WebGL support
+
+### I can't rotate objects with Q/E!
+- Make sure you have an object selected (not fists/0)
+- Q/E only rotate the ghost preview when building
+- When using fists (0), Q/E rotate the camera instead
+
+### Doors aren't highlighting on houses!
+- Move closer to the door (within 8 units)
+- Look directly at the door, not the house walls
+- Click when the door turns green to enter
 
 ## 📚 Learning Resources
 

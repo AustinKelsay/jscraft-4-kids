@@ -68,7 +68,7 @@ function init() {
     createWorld();
     createLighting();
     createInitialWorldObjects(scene);
-    createInitialAnimals();
+    createInitialAnimals(scene);
     
     // Setup controls
     setupEventListeners();
@@ -98,11 +98,13 @@ function animate() {
   
   updatePlayer(delta);
   
-  // Only update outside world systems when not inside
+  // Update different systems based on location
   if (!worldState.isInside) {
     updateDayNightCycle();
-    updateAnimals(delta);
   }
+  
+  // Animals update regardless of location (different animals inside/outside)
+  updateAnimals(delta);
   
   updateObjectHighlight();
   

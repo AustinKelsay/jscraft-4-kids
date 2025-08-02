@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
-import { interiorObjects, interactableObjects } from './gameState.js';
+import { interiorObjects, interactableObjects, worldState } from './gameState.js';
 
 /**
  * Creates a chair at the specified position
@@ -62,7 +62,13 @@ export function createChair(x = 0, z = 0) {
   chair.userData = { type: 'chair', removable: true };
   
   interiorObjects.push(chair);
-  interactableObjects.add(chair);
+  
+  // Add to interior group if it exists, otherwise to interactable objects
+  if (worldState.interiorGroup) {
+    worldState.interiorGroup.add(chair);
+  } else {
+    interactableObjects.add(chair);
+  }
   
   return chair;
 }
@@ -114,7 +120,13 @@ export function createTable(x = 0, z = 0) {
   table.userData = { type: 'table', removable: true };
   
   interiorObjects.push(table);
-  interactableObjects.add(table);
+  
+  // Add to interior group if it exists, otherwise to interactable objects
+  if (worldState.interiorGroup) {
+    worldState.interiorGroup.add(table);
+  } else {
+    interactableObjects.add(table);
+  }
   
   return table;
 }
@@ -181,7 +193,13 @@ export function createCouch(x = 0, z = 0) {
   couch.userData = { type: 'couch', removable: true };
   
   interiorObjects.push(couch);
-  interactableObjects.add(couch);
+  
+  // Add to interior group if it exists, otherwise to interactable objects
+  if (worldState.interiorGroup) {
+    worldState.interiorGroup.add(couch);
+  } else {
+    interactableObjects.add(couch);
+  }
   
   return couch;
 }
@@ -241,7 +259,13 @@ export function createTV(x = 0, z = 0) {
   tv.userData = { type: 'tv', removable: true };
   
   interiorObjects.push(tv);
-  interactableObjects.add(tv);
+  
+  // Add to interior group if it exists, otherwise to interactable objects
+  if (worldState.interiorGroup) {
+    worldState.interiorGroup.add(tv);
+  } else {
+    interactableObjects.add(tv);
+  }
   
   return tv;
 }
@@ -322,7 +346,13 @@ export function createBed(x = 0, z = 0) {
   bed.userData = { type: 'bed', removable: true };
   
   interiorObjects.push(bed);
-  interactableObjects.add(bed);
+  
+  // Add to interior group if it exists, otherwise to interactable objects
+  if (worldState.interiorGroup) {
+    worldState.interiorGroup.add(bed);
+  } else {
+    interactableObjects.add(bed);
+  }
   
   return bed;
 }

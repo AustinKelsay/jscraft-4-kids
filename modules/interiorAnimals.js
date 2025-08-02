@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
-import { interiorAnimals, interactableObjects } from './gameState.js';
+import { interiorAnimals, interactableObjects, worldState } from './gameState.js';
 
 /**
  * Creates a cat at the specified position
@@ -102,7 +102,13 @@ export function createCat(x, z) {
   };
   
   interiorAnimals.push(cat);
-  interactableObjects.add(cat);
+  
+  // Add to interior group if it exists, otherwise to interactable objects
+  if (worldState.interiorGroup) {
+    worldState.interiorGroup.add(cat);
+  } else {
+    interactableObjects.add(cat);
+  }
   
   return cat;
 }
@@ -216,7 +222,13 @@ export function createDog(x, z) {
   };
   
   interiorAnimals.push(dog);
-  interactableObjects.add(dog);
+  
+  // Add to interior group if it exists, otherwise to interactable objects
+  if (worldState.interiorGroup) {
+    worldState.interiorGroup.add(dog);
+  } else {
+    interactableObjects.add(dog);
+  }
   
   return dog;
 }

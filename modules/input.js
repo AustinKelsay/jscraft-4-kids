@@ -6,7 +6,8 @@ import { CONFIG } from './config.js';
 import { 
   renderer, camera, keys, mouseControls, player, highlightedObject,
   cameraController, worldState, interactableObjects, skyMesh, sunMesh, 
-  moonMesh, sunLight, moonLight, ambientLight, uiElements, setSelectedObjectType
+  moonMesh, sunLight, moonLight, ambientLight, uiElements, setSelectedObjectType,
+  selectedObjectType, ghostRotation, setGhostRotation
 } from './gameState.js';
 import { buildObject, removeObject, resetObjectHighlight } from './building.js';
 import { updateObjectSelector, updateSelectorContent } from './ui.js';
@@ -62,12 +63,20 @@ function onKeyDown(event) {
       }
       break;
     case 'KeyQ':
-      if (!mouseControls.active) {
+      // Rotate ghost object counter-clockwise when building
+      if (selectedObjectType !== 0) {
+        setGhostRotation(ghostRotation + Math.PI / 4);
+      } else if (!mouseControls.active) {
+        // Normal camera rotation when not building
         applyCameraMovement(0.1, 0);
       }
       break;
     case 'KeyE':
-      if (!mouseControls.active) {
+      // Rotate ghost object clockwise when building
+      if (selectedObjectType !== 0) {
+        setGhostRotation(ghostRotation - Math.PI / 4);
+      } else if (!mouseControls.active) {
+        // Normal camera rotation when not building
         applyCameraMovement(-0.1, 0);
       }
       break;
@@ -100,6 +109,10 @@ function onKeyDown(event) {
       break;
     case 'Digit6':
       setSelectedObjectType(6); // Horse
+      updateObjectSelector();
+      break;
+    case 'Digit7':
+      setSelectedObjectType(7); // Dog (when inside)
       updateObjectSelector();
       break;
   }

@@ -16,29 +16,43 @@ import { worldObjects, interactableObjects } from './gameState.js';
 export function createTree(x, z) {
   const tree = new THREE.Group();
   
-  // Trunk
-  const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.7, 4, 8);
+  // Random variations
+  const heightVariation = CONFIG.objects.tree.minHeight + Math.random() * (CONFIG.objects.tree.maxHeight - CONFIG.objects.tree.minHeight);
+  const radiusVariation = CONFIG.objects.tree.minRadius + Math.random() * (CONFIG.objects.tree.maxRadius - CONFIG.objects.tree.minRadius);
+  const trunkHeight = heightVariation * 0.4;
+  const foliageHeight = heightVariation * 0.6;
+  
+  // Trunk with variation
+  const trunkGeometry = new THREE.CylinderGeometry(
+    radiusVariation * 0.15, // top radius
+    radiusVariation * 0.2,  // bottom radius
+    trunkHeight, 
+    8
+  );
   const trunkMaterial = new THREE.MeshStandardMaterial({ 
     color: CONFIG.objects.tree.trunkColor,
     roughness: 0.8
   });
   const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-  trunk.position.y = 2;
+  trunk.position.y = trunkHeight / 2;
   trunk.castShadow = true;
   trunk.receiveShadow = true;
   tree.add(trunk);
   
-  // Foliage
-  const foliageGeometry = new THREE.ConeGeometry(3, 6, 8);
+  // Foliage with variation
+  const foliageGeometry = new THREE.ConeGeometry(radiusVariation, foliageHeight, 8);
   const foliageMaterial = new THREE.MeshStandardMaterial({ 
     color: CONFIG.objects.tree.foliageColor,
     roughness: 0.9
   });
   const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
-  foliage.position.y = 5;
+  foliage.position.y = trunkHeight + foliageHeight / 2;
   foliage.castShadow = true;
   foliage.receiveShadow = true;
   tree.add(foliage);
+  
+  // Add some rotation variation
+  tree.rotation.y = Math.random() * Math.PI * 2;
   
   tree.position.set(x, 0, z);
   tree.userData = { type: 'tree', removable: true };
@@ -122,7 +136,13 @@ export function createHouse(x, z) {
   });
   const door = new THREE.Mesh(doorGeometry, doorMaterial);
   door.position.set(0, 1.25, 3.1);
-  door.userData = { type: 'door', parentHouse: house };
+  door.userData = { 
+    type: 'door', 
+    parentHouse: house,
+    originalMaterial: doorMaterial  // Store for resetting highlight
+  };
+  door.castShadow = true;
+  door.receiveShadow = true;
   house.add(door);
   
   // Window
@@ -163,14 +183,11 @@ export function createInitialWorldObjects(scene) {
     const type = Math.random();
     
     if (type < 0.4) {
-      const tree = createTree(x, z);
-      scene.add(tree);
+      createTree(x, z);
     } else if (type < 0.7) {
-      const rock = createRock(x, z);
-      scene.add(rock);
+      createRock(x, z);
     } else {
-      const house = createHouse(x, z);
-      scene.add(house);
+      createHouse(x, z);
     }
   }
 }

@@ -9,7 +9,10 @@ export const CONFIG = {
     groundSize: 2000,         // Visual ground plane size
     gridDivisions: 50,        // Grid helper divisions
     fogNear: 100,             // Fog start distance
-    fogFar: 500               // Fog end distance
+    fogFar: 500,              // Fog end distance
+    objectCount: 50,          // Number of initial objects to spawn
+    animalCount: 8,           // Number of initial animals to spawn
+    boundaryPadding: 20       // Padding from world edge for spawning
   },
   
   // Player physics and controls
@@ -41,7 +44,7 @@ export const CONFIG = {
   objects: {
     tree: {
       trunkColor: 0x8B4513,   // Brown
-      leavesColor: 0x228B22,  // Forest green
+      foliageColor: 0x228B22,  // Forest green (fixed from leavesColor)
       minHeight: 4,
       maxHeight: 8,
       minRadius: 2,
@@ -66,12 +69,16 @@ export const CONFIG = {
     cow: {
       bodyColor: 0x8B4513,    // Brown
       spotColor: 0xFFFFFF,    // White spots
+      snoutColor: 0xFFB6C1,   // Pink snout
+      hornColor: 0xFFFFF0,    // Ivory horns
+      udderColor: 0xFFB6C1,   // Pink udder
       size: 1.5,              // Reduced from 2
       moveSpeed: 2,           // Movement speed
       wanderRadius: 15        // How far they wander
     },
     pig: {
       bodyColor: 0xFFB6C1,    // Light pink
+      snoutColor: 0xFF69B4,   // Hot pink snout
       size: 1,                // Reduced from 1.5
       moveSpeed: 3,
       wanderRadius: 10
@@ -79,6 +86,7 @@ export const CONFIG = {
     horse: {
       bodyColor: 0x654321,    // Dark brown
       maneColor: 0x000000,    // Black mane
+      hoofColor: 0x2F4F4F,    // Dark slate gray hooves
       size: 1.8,              // Reduced from 2.5
       moveSpeed: 5,
       wanderRadius: 20
@@ -124,6 +132,7 @@ export const CONFIG = {
     wallColor: 0xF5F5DC,      // Beige walls
     ceilingColor: 0xFFFFFF,   // White ceiling
     doorHighlightColor: 0x00FF00, // Green door highlight
+    boundaryPadding: 2,       // Padding from walls for animal movement
     furniture: {
       chair: {
         seatColor: 0x8B4513,  // Brown seat

@@ -44,6 +44,9 @@ export const buildableTypes = ['fists', 'tree', 'rock', 'house', 'cow', 'pig', '
 export const interiorBuildableTypes = ['fists', 'chair', 'table', 'couch', 'tv', 'bed', 'cat', 'dog'];
 export let highlightedObject = null;
 export let ghostObject = null;
+export let ghostRotation = 0;  // Rotation for ghost preview objects
+export let lastGhostType = null;  // Track last ghost type to avoid recreation
+export let lastGhostRotation = 0;  // Track last rotation to detect changes
 
 // World object management
 export const worldObjects = [];     // Outdoor objects (trees, rocks, houses)
@@ -88,4 +91,7 @@ export function setSunMesh(value) { sunMesh = value; }
 export function setMoonMesh(value) { moonMesh = value; }
 export function setHighlightedObject(value) { highlightedObject = value; }
 export function setGhostObject(value) { ghostObject = value; }
+export function setGhostRotation(value) { ghostRotation = value; }
 export function setSelectedObjectType(value) { selectedObjectType = value; }
+export function setLastGhostType(value) { lastGhostType = value; }
+export function setLastGhostRotation(value) { lastGhostRotation = value; }
